@@ -1,0 +1,110 @@
+{
+  "page_1": [
+    {
+      "name": "chunk_1",
+      "description": "",
+      "rect": [
+        42.0,
+        233.0,
+        565.0,
+        352.0
+      ]
+    },
+    {
+      "name": "chunk_2",
+      "description": "",
+      "rect": [
+        36.0,
+        360.0,
+        586.0,
+        577.0
+      ]
+    },
+    {
+      "name": "chunk_3",
+      "description": "",
+      "rect": [
+        44.0,
+        591.0,
+        580.0,
+        788.0
+      ]
+    }
+  ],
+  "page_2": [
+    {
+      "name": "chunk_4",
+      "description": "",
+      "rect": [
+        4.0,
+        3.0,
+        560.0,
+        121.0
+      ]
+    },
+    {
+      "name": "chunk_5",
+      "description": "",
+      "rect": [
+        36.0,
+        126.0,
+        561.0,
+        299.0
+      ]
+    },
+    {
+      "name": "chunk_6",
+      "description": "",
+      "rect": [
+        23.0,
+        301.0,
+        587.0,
+        790.0
+      ]
+    }
+  ],
+  "page_3": [
+    {
+      "name": "chunk_7",
+      "description": "",
+      "rect": [
+        51.0,
+        106.0,
+        578.0,
+        261.0
+      ]
+    },
+    {
+      "name": "chunk_8",
+      "description": "",
+      "rect": [
+        46.0,
+        317.0,
+        568.0,
+        793.0
+      ]
+    }
+  ],
+  "page_4": [
+    {
+      "name": "chunk_9",
+      "description": "",
+      "rect": [
+        39.0,
+        82.0,
+        573.0,
+        279.0
+      ]
+    },
+    {
+      "name": "chunk_10",
+      "description": "",
+      "rect": [
+        38.0,
+        284.0,
+        573.0,
+        628.0
+      ]
+    }
+  ]
+}

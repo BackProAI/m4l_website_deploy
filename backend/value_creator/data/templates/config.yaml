@@ -1,0 +1,41 @@
+# Configuration file for Value Creator Letter processing
+
+# Document processing settings
+document:
+  chunk_size: 800
+  overlap: 0
+  supported_formats: ['.pdf', '.docx', '.txt']
+  target_width: 595
+  target_height: 841
+  resize_to_a4: true
+
+# OpenAI settings
+openai:
+  api_key: "${OPENAI_API_KEY}"
+  model: "gpt-4o"
+  max_tokens: 2000
+  temperature: 0.3
+
+# Analysis settings
+analysis:
+  detect_handwriting: true
+  detect_strikethrough: true
+  detect_crosses: true
+  detect_highlighting: true
+  detect_annotations: true
+  confidence_threshold: 0.7
+  selection_method: "automatic"
+  auto_select_all: true
+  force_template_usage: true
+
+# Word processing settings
+word_processing:
+  preserve_formatting: true
+  highlight_detected_items: true
+  add_comments: true
+  track_changes: true
+
+# Logging settings
+logging:
+  level: "INFO"
+  file: "document_parser.log"

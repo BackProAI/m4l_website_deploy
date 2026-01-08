@@ -1,0 +1,42 @@
+# ==============================================================================
+# A3 Sectioned GPT-4o Automation System - Dependencies
+# Clean, focused dependencies for GPT-4o based OCR and automation
+# ==============================================================================
+
+# Core Image & PDF Processing
+Pillow>=10.0.0              # Image processing and manipulation
+PyMuPDF>=1.23.0             # PDF processing and form field handling
+
+# HTTP & API Communication
+requests>=2.31.0            # HTTP library for GPT-4o API calls
+
+# UI Framework
+tkinterdnd2>=0.3.0          # Drag-and-drop GUI framework
+
+# Environment & Configuration
+python-dotenv>=1.0.0        # Environment variable management
+
+# Optional Document Processing
+python-docx>=1.1.0          # Word document processing (if needed)
+
+# Development & Testing (optional)
+pytest>=7.4.0              # Testing framework
+pytest-cov>=4.1.0          # Coverage reporting
+black>=23.0.0               # Code formatting
+flake8>=6.0.0               # Code linting
+
+# Build & Distribution
+pyinstaller>=5.13.0        # Executable building for deployment
+
+# ==============================================================================
+# Installation Instructions:
+# ==============================================================================
+# 
+# Basic Installation:
+# pip install -r requirements.txt
+#
+# For development:
+# pip install -r requirements.txt pytest black flake8
+#
+# Note: This system uses GPT-4o API for OCR - no heavy ML dependencies required!
+# ==============================================================================

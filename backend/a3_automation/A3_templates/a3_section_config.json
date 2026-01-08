@@ -1,0 +1,263 @@
+{
+  "page_1": [
+    {
+      "id": 1,
+      "name": "Section_1_1",
+      "page": 1,
+      "rect": [
+        119.1,
+        342.4125,
+        419.8275,
+        637.185
+      ],
+      "target_field": "Dangers to be eliminated"
+    },
+    {
+      "id": 2,
+      "name": "Section_1_2",
+      "page": 1,
+      "rect": [
+        133.9875,
+        771.1725,
+        407.9175,
+        1065.945
+      ],
+      "target_field": "Opportunities to be focused on & captured"
+    },
+    {
+      "id": 3,
+      "name": "Section_1_3",
+      "page": 1,
+      "rect": [
+        131.01,
+        1205.8875,
+        401.9625,
+        1494.705
+      ],
+      "target_field": "Strengths to be reinforced & maximised"
+    },
+    {
+      "id": 4,
+      "name": "Section_1_4",
+      "page": 1,
+      "rect": [
+        604.4325,
+        276.90749999999997,
+        1128.4725,
+        628.2524999999999
+      ],
+      "target_field": "Right_mid"
+    },
+    {
+      "id": 5,
+      "name": "Section_1_5",
+      "page": 1,
+      "rect": [
+        601.455,
+        699.7125,
+        1128.4725,
+        1057.0125
+      ],
+      "target_field": "Right_belowmid"
+    },
+    {
+      "id": 6,
+      "name": "Section_1_6",
+      "page": 1,
+      "rect": [
+        610.3875,
+        1143.36,
+        1128.4725,
+        1497.6825
+      ],
+      "target_field": "Right_bottom"
+    }
+  ],
+  "page_2": [
+    {
+      "id": 1,
+      "name": "Section_2_1",
+      "page": 2,
+      "rect": [
+        119.1,
+        360.2775,
+        390.0525,
+        672.915
+      ],
+      "target_field": "money_goals"
+    },
+    {
+      "id": 2,
+      "name": "Section_2_2",
+      "page": 2,
+      "rect": [
+        586.5675,
+        366.2325,
+        845.61,
+        672.915
+      ],
+      "target_field": "business_goals"
+    },
+    {
+      "id": 3,
+      "name": "Section_2_3",
+      "page": 2,
+      "rect": [
+        1048.08,
+        360.2775,
+        1310.1,
+        663.9825
+      ],
+      "target_field": "leisure_goals"
+    },
+    {
+      "id": 4,
+      "name": "Section_2_4",
+      "page": 2,
+      "rect": [
+        1506.615,
+        363.255,
+        1771.6125,
+        666.96
+      ],
+      "target_field": "health_goals"
+    },
+    {
+      "id": 5,
+      "name": "Section_2_5",
+      "page": 2,
+      "rect": [
+        1968.1275,
+        369.21,
+        2227.17,
+        666.96
+      ],
+      "target_field": "family_goals"
+    },
+    {
+      "id": 6,
+      "name": "Section_2_6",
+      "page": 2,
+      "rect": [
+        131.01,
+        768.1949999999999,
+        384.09749999999997,
+        1071.9
+      ],
+      "target_field": "money_now"
+    },
+    {
+      "id": 7,
+      "name": "Section_2_7",
+      "page": 2,
+      "rect": [
+        589.545,
+        768.1949999999999,
+        851.5649999999999,
+        1065.945
+      ],
+      "target_field": "business_now"
+    },
+    {
+      "id": 8,
+      "name": "Section_2_8",
+      "page": 2,
+      "rect": [
+        1051.0575,
+        762.24,
+        1313.0774999999999,
+        1068.9225
+      ],
+      "target_field": "leisure_now"
+    },
+    {
+      "id": 9,
+      "name": "Section_2_9",
+      "page": 2,
+      "rect": [
+        1515.5475,
+        771.1725,
+        1771.6125,
+        1059.99
+      ],
+      "target_field": "health_now"
+    },
+    {
+      "id": 10,
+      "name": "Section_2_10",
+      "page": 2,
+      "rect": [
+        1977.06,
+        765.2175,
+        2239.08,
+        1062.9675
+      ],
+      "target_field": "family_now"
+    },
+    {
+      "id": 11,
+      "name": "Section_2_11",
+      "page": 2,
+      "rect": [
+        128.0325,
+        1167.18,
+        387.075,
+        1494.705
+      ],
+      "target_field": "money_todo"
+    },
+    {
+      "id": 12,
+      "name": "Section_2_12",
+      "page": 2,
+      "rect": [
+        583.59,
+        1155.27,
+        845.61,
+        1491.7275
+      ],
+      "target_field": "business_todo"
+    },
+    {
+      "id": 13,
+      "name": "Section_2_13",
+      "page": 2,
+      "rect": [
+        1048.08,
+        1161.225,
+        1307.1225,
+        1497.6825
+      ],
+      "target_field": "leisure_todo"
+    },
+    {
+      "id": 14,
+      "name": "Section_2_14",
+      "page": 2,
+      "rect": [
+        1509.5925,
+        1161.225,
+        1768.635,
+        1503.6375
+      ],
+      "target_field": "health_todo"
+    },
+    {
+      "id": 15,
+      "name": "Section_2_15",
+      "page": 2,
+      "rect": [
+        1968.1275,
+        1170.1575,
+        2236.1025,
+        1500.66
+      ],
+      "target_field": "family_todo"
+    }
+  ],
+  "_metadata": {
+    "version": "1.0",
+    "description": "A3 OCR Section Configuration",
+    "total_sections": 21
+  }
+}
