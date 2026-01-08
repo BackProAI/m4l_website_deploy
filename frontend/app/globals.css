@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --background: #f9fafb;
+  --surface: #ffffff;
+  --muted: #6b7280;
+  --foreground: #0f172a;
+  --accent: #0ea5a4;
+}
+
+.dark {
+  --background: #050607;
+  --surface: #0b0f12;
+  --muted: #9fb6c4; /* lighter muted for contrast */
+  --foreground: #ffffff; /* ensure body text is readable - near-white (200% rule) */
+  --accent: #60a5fa;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Force Tailwind utility colors to respect our theme variables in dark mode.
+   This ensures there are no leftover light-theme white panels when .dark is applied. */
+/* Backgrounds */
+.dark .bg-white { background-color: var(--surface) !important; }
+.dark .bg-gray-50 { background-color: var(--surface) !important; }
+.dark .bg-gray-100 { background-color: rgba(255,255,255,0.02) !important; }
+.dark .bg-gray-200 { background-color: rgba(255,255,255,0.03) !important; }
+
+/* Borders */
+.dark .border-gray-200 { border-color: rgba(255,255,255,0.04) !important; }
+.dark .border-gray-300 { border-color: rgba(255,255,255,0.06) !important; }
+.dark .border { border-color: rgba(255,255,255,0.06) !important; }
+
+/* Text colors - map common Tailwind text utilities to our foreground/muted tokens */
+.dark .text-black, .dark .text-slate-900, .dark .text-slate-800 { color: var(--foreground) !important; }
+.dark .text-slate-700, .dark .text-slate-600 { color: var(--muted) !important; }
+.dark .text-gray-500, .dark .text-gray-400 { color: var(--muted) !important; }
+
+/* Inputs/controls */
+.dark input, .dark textarea, .dark select, .dark .input, .dark .form-control {
+  background-color: var(--surface) !important;
+  color: var(--foreground) !important;
+  border-color: rgba(255,255,255,0.06) !important;
+}
+
+/* Links, buttons and accents */
+.dark a, .dark .link { color: var(--accent) !important; }
+.dark .btn, .dark button { color: var(--foreground) !important; }
+
+/* Generic panels/cards used across the app */
+.dark .card, .dark .panel, .dark .modal {
+  background-color: var(--surface) !important;
+  color: var(--foreground) !important;
+  border-color: rgba(255,255,255,0.04) !important;
+}
+
+/* Ensure utility backgrounds used in many components don't remain bright */
+.dark .bg-gray-800 { background-color: rgba(255,255,255,0.03) !important; }
+.dark .bg-gray-900 { background-color: rgba(255,255,255,0.02) !important; }
+
+/* Enforce text color across common elements so nothing remains light-colored in dark mode */
+.dark body,
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6,
+.dark p, .dark span, .dark li, .dark a, .dark button, .dark label,
+.dark input, .dark textarea, .dark select {
+  color: var(--foreground) !important;
+}
+
+/* Use slightly less bright color for secondary/muted text */
+.dark small, .dark .muted, .dark .text-muted, .dark .helper-text {
+  color: var(--muted) !important;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
