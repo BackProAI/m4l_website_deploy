@@ -1,0 +1,30 @@
+{
+  "has_goals_table": true,
+  "goals_column_found": true,
+  "achieved_column_found": true,
+  "handwritten_goals": [
+    {
+      "dot_point_number": 1,
+      "handwritten_text": "",
+      "has_handwriting": false
+    },
+    {
+      "dot_point_number": 2,
+      "handwritten_text": "",
+      "has_handwriting": false
+    },
+    {
+      "dot_point_number": 3,
+      "handwritten_text": "",
+      "has_handwriting": false
+    },
+    {
+      "dot_point_number": 4,
+      "handwritten_text": "",
+      "has_handwriting": false
+    }
+  ],
+  "achieved_column_instructions": "Leave ticks/checkmarks unchanged",
+  "should_update_goals": false,
+  "explanation": "The table contains four dot points under the 'GOALS' column, but there is no handwritten text next to any of them. The 'ACHIEVED' column contains checkmarks, which are left unchanged."
+}

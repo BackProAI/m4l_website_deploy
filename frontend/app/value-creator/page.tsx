@@ -1,17 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Upload, FileText, CheckCircle2, Settings, Download, Eye, AlertCircle, TrendingUp } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Download, Eye, AlertCircle, TrendingUp } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
 
 export default function ValueCreatorPage() {
   // State management
   const [files, setFiles] = useState<{pdf: File | null, word: File | null}>({pdf: null, word: null});
-  const [detectStrikethrough, setDetectStrikethrough] = useState(true);
-  const [detectAmounts, setDetectAmounts] = useState(true);
-  const [detectDates, setDetectDates] = useState(true);
-  const [conservativeMode, setConservativeMode] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState(0);
   const [results, setResults] = useState<any>(null);
@@ -88,38 +84,90 @@ export default function ValueCreatorPage() {
     setProcessingStep(0);
     setError(null);
 
-    const toastId = toast.loading('Processing documents...');
+    const toastId = toast.loading('Uploading documents...');
 
     try {
-      // Simulate processing steps
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('pdf', files.pdf);
+      formData.append('docx', files.word);
+
+      const API_BASE = process.env.NEXT_PUBLIC_A3_API || '';
+      const processUrl = (API_BASE ? API_BASE : '') + '/api/value-creator/process';
+
+      // Processing steps for user feedback
       const steps = [
+        'Uploading documents...',
         'Parsing PDF and chunking document...',
-        'Analyzing 10 chunks with M4L VL Model...',
+        'Analysing 10 chunks with M4L VL Model...',
         'Detecting strikethroughs and changes...',
         'Extracting amounts and dates...',
         'Generating Word document...'
       ];
 
-      for (let i = 0; i < steps.length; i++) {
-        setProcessingStep(i);
-        toast.loading(steps[i], { id: toastId });
-        await new Promise(resolve => setTimeout(resolve, 1500));
+      // Update toast with upload status
+      setProcessingStep(0);
+      toast.loading(steps[0], { id: toastId });
+
+      // Make API call
+      const response = await fetch(processUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let errorMsg = `Processing failed: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.detail) {
+            errorMsg = String(errorData.detail);
+          }
+        } catch (_) {}
+        throw new Error(errorMsg);
       }
 
-      // Mock results
+      const data = await response.json();
+      
+      // Simulate progress updates for better UX
+      for (let i = 1; i < steps.length; i++) {
+        setProcessingStep(i);
+        toast.loading(steps[i], { id: toastId });
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
+
+      // Extract results
+      const result = data.result || {};
+      const stages = result.stages || {};
+      const pdfAnalysis = stages.pdf_analysis || {};
+      const wordProcessing = stages.word_processing || {};
+      const changes = wordProcessing.changes || {};
+      const operationBreakdown = changes.operation_breakdown || {};
+      
+      // Check if processing was successful
+      if (result.status !== 'success') {
+        throw new Error(result.error || 'Processing failed');
+      }
+
+      // Set results for display
+      const sections = wordProcessing.sections || {};
+      const strategyBreakdown = changes.strategy_breakdown || {};
+      const totalChanges = (strategyBreakdown.exact_matches || 0) + 
+                          (strategyBreakdown.similarity_matches || 0) + 
+                          (strategyBreakdown.keyword_matches || 0);
+      
       setResults({
-        chunksProcessed: 10,
-        strikethroughsDetected: 8,
-        amountsFound: 15,
-        datesReplaced: 3,
-        changesApplied: 26,
-        processingTime: '14.8s',
-        outputFile: `${files.word!.name.replace('.docx', '').replace('.doc', '')}_value_creator.docx`
+        chunksProcessed: pdfAnalysis.chunks_processed || 0,
+        sectionsProcessed: sections.successful_sections || 0,
+        changesApplied: totalChanges,
+        finalDocument: result.output_file,
+        jobId: data.jobId,
+        processingTime: result.processing_time_seconds ? `${result.processing_time_seconds.toFixed(1)}s` : 'N/A',
+        outputFile: result.output_file ? result.output_file.split(/[/\\]/).pop() : 'value_creator_output.docx'
       });
 
       toast.success('Value Creator letter processed successfully!', { id: toastId });
     } catch (err) {
-      const errorMsg = 'Processing failed. Please try again.';
+      const errorMsg = err instanceof Error ? err.message : 'Processing failed. Please try again.';
       setError(errorMsg);
       toast.error(errorMsg, { id: toastId });
     } finally {
@@ -132,6 +180,28 @@ export default function ValueCreatorPage() {
     setResults(null);
     setError(null);
     setProcessingStep(0);
+  };
+
+  const handleDownload = () => {
+    if (!results?.finalDocument || !results?.jobId) {
+      toast.error('No processed document available');
+      return;
+    }
+
+    // Extract just the filename from the full path
+    const fileName = results.finalDocument.split(/[/\\]/).pop() || 'value_creator_output.docx';
+    
+    // The file is in a subdirectory: outputs/{jobId}/{filename}
+    const API_BASE = process.env.NEXT_PUBLIC_A3_API || '';
+    const downloadUrl = `${API_BASE}/downloads/${results.jobId}/${fileName}`;
+    
+    // Create temporary link and trigger download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = fileName;
+    link.click();
+    
+    toast.success('Download started!');
   };
 
   return (
@@ -230,68 +300,6 @@ export default function ValueCreatorPage() {
             </div>
           </div>
 
-          {/* Processing Options */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Settings className="h-5 w-5 text-m4l-blue" />
-              <h3 className="text-lg font-semibold text-m4l-blue">Processing Options</h3>
-            </div>
-
-            <div className="space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={detectStrikethrough}
-                  onChange={(e) => setDetectStrikethrough(e.target.checked)}
-                  className="w-4 h-4 text-m4l-orange focus:ring-m4l-orange rounded"
-                />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Detect strikethroughs</p>
-                  <p className="text-xs text-gray-500">Identify crossed-out text in document</p>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={detectAmounts}
-                  onChange={(e) => setDetectAmounts(e.target.checked)}
-                  className="w-4 h-4 text-m4l-orange focus:ring-m4l-orange rounded"
-                />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Detect amounts</p>
-                  <p className="text-xs text-gray-500">Extract monetary values and numbers</p>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={detectDates}
-                  onChange={(e) => setDetectDates(e.target.checked)}
-                  className="w-4 h-4 text-m4l-orange focus:ring-m4l-orange rounded"
-                />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Detect dates</p>
-                  <p className="text-xs text-gray-500">Replace XXXX with handwritten dates</p>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={conservativeMode}
-                  onChange={(e) => setConservativeMode(e.target.checked)}
-                  className="w-4 h-4 text-m4l-orange focus:ring-m4l-orange rounded"
-                />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Conservative mode</p>
-                  <p className="text-xs text-gray-500">Only detect high-confidence changes</p>
-                </div>
-              </label>
-            </div>
-          </div>
-
           {/* Process Button */}
           {!isProcessing && !results && (
             <button
@@ -335,7 +343,7 @@ export default function ValueCreatorPage() {
               <div className="space-y-3">
                 {[
                   'Parsing PDF and chunking document...',
-                  'Analyzing 10 chunks with M4L VL Model...',
+                  'Analysing 10 chunks with M4L VL Model...',
                   'Detecting strikethroughs and changes...',
                   'Extracting amounts and dates...',
                   'Generating Word document...'
@@ -374,16 +382,8 @@ export default function ValueCreatorPage() {
                     <p className="text-2xl font-bold text-m4l-blue">{results.chunksProcessed}</p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-xs text-gray-500 mb-1">Strikethroughs</p>
-                    <p className="text-2xl font-bold text-m4l-blue">{results.strikethroughsDetected}</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-xs text-gray-500 mb-1">Amounts Found</p>
-                    <p className="text-2xl font-bold text-green-600">{results.amountsFound}</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-xs text-gray-500 mb-1">Dates Replaced</p>
-                    <p className="text-2xl font-bold text-green-600">{results.datesReplaced}</p>
+                    <p className="text-xs text-gray-500 mb-1">Sections Processed</p>
+                    <p className="text-2xl font-bold text-m4l-blue">{results.sectionsProcessed}</p>
                   </div>
                 </div>
 
@@ -404,12 +404,7 @@ export default function ValueCreatorPage() {
 
               <div className="space-y-3">
                 <button
-                  className="w-full bg-m4l-blue text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Eye className="h-5 w-5" />
-                  Preview Document
-                </button>
-                <button
+                  onClick={handleDownload}
                   className="w-full bg-m4l-orange text-white px-4 py-2 rounded-lg font-medium hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"
                 >
                   <Download className="h-5 w-5" />
@@ -452,7 +447,7 @@ export default function ValueCreatorPage() {
                   3
                 </div>
                 <p className="text-sm text-gray-700 pt-1">
-                  M4L VL Model analyzes each chunk for changes and strikethroughs
+                  M4L VL Model analyses each chunk for changes and strikethroughs
                 </p>
               </div>
 

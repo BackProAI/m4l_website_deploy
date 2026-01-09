@@ -1,0 +1,26 @@
+{
+  "raw_analysis": "```json\n{\n    \"has_deletion_marks\": true,\n    \"has_replacement_marks\": true,\n    \"has_additions\": false,\n    \"has_any_handwriting\": true,\n    \"row_modifications\": [\n        {\n            \"row_number\": 1,\n            \"modification_type\": \"deletion\",\n            \"description\": \"Text 'your' and 'superannuation and age pension entitlements' have strikethrough and diagonal line.\",\n            \"should_delete_row\": false,\n            \"replacement_text\": \"\"\n        },\n        {\n            \"row_number\": 2,\n            \"modification_type\": \"replacement\",\n            \"description\": \"Text 'your current super' is strikethrough, followed by handwritten modification indicating replacement with 'MyNorth'.\",\n            \"should_delete_row\": false,\n            \"replacement_text\": \"Consider rolling over to MyNorth.\"\n        }\n    ],\n    \"explanation\": \"The first row has deletion marks through specific text, suggesting partial modification rather than full row deletion. The second row shows strikethrough with an arrow indicating replacement of specific words, not the entire row.\"\n}\n```",
+  "parsed_data": {
+    "has_deletion_marks": true,
+    "has_replacement_marks": true,
+    "has_additions": false,
+    "has_any_handwriting": true,
+    "row_modifications": [
+      {
+        "row_number": 1,
+        "modification_type": "deletion",
+        "description": "Text 'your' and 'superannuation and age pension entitlements' have strikethrough and diagonal line.",
+        "should_delete_row": false,
+        "replacement_text": ""
+      },
+      {
+        "row_number": 2,
+        "modification_type": "replacement",
+        "description": "Text 'your current super' is strikethrough, followed by handwritten modification indicating replacement with 'MyNorth'.",
+        "should_delete_row": false,
+        "replacement_text": "Consider rolling over to MyNorth."
+      }
+    ],
+    "explanation": "The first row has deletion marks through specific text, suggesting partial modification rather than full row deletion. The second row shows strikethrough with an arrow indicating replacement of specific words, not the entire row."
+  }
+}

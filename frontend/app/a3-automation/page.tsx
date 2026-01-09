@@ -10,16 +10,12 @@ import {
   AlertCircle, 
   Download,
   FileCheck,
-  Settings,
   Loader2
 } from 'lucide-react';
 import PdfPreviewModal from '@/components/PdfPreviewModal';
 
 export default function A3AutomationPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState('default');
-  const [spellCheckEnabled, setSpellCheckEnabled] = useState(true);
-  const [customFieldsEnabled, setCustomFieldsEnabled] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [processedPdfUrl, setProcessedPdfUrl] = useState<string | null>(null);
@@ -71,27 +67,37 @@ export default function A3AutomationPage() {
     const toastId = toast.loading('Processing A3 form...');
 
     try {
-      // TODO: Replace with actual API call
-      // Simulate processing for now
-      const progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 500);
+      // Call backend /api/a3/process
+      const API_BASE = process.env.NEXT_PUBLIC_A3_API || '';
+      const processUrl = (API_BASE ? API_BASE : '') + '/api/a3/process';
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      clearInterval(progressInterval);
+      const form = new FormData();
+      form.append('file', uploadedFile);
+
+      const resp = await fetch(processUrl, {
+        method: 'POST',
+        body: form,
+      });
+
+      if (!resp.ok) {
+        let msg = `Processing failed: ${resp.status}`;
+        try { const j = await resp.json(); if (j && j.detail) msg = j.detail; } catch (_) {}
+        throw new Error(msg);
+      }
+
+      const data = await resp.json();
+      // Backend returns result with output path in result.output_pdf_path
+      const outputPath = data?.result?.output_pdf_path || data?.result?.output_pdf || null;
+      if (!outputPath) throw new Error('Processing did not return processed PDF');
+
+      // If relative path, qualify with API_BASE
+      let pdfUrl = outputPath;
+      if (API_BASE && pdfUrl.startsWith('/')) pdfUrl = API_BASE.replace(/\/$/, '') + pdfUrl;
+
+      setProcessedPdfUrl(pdfUrl);
+      setShowPdfModal(true);
       setProgress(100);
 
-      // Mock result
-      setProcessedPdfUrl('/mock-processed-a3.pdf');
-      setShowPdfModal(true);
-      
       toast.success('A3 form processed successfully!', { id: toastId });
       
     } catch (err) {
@@ -103,25 +109,49 @@ export default function A3AutomationPage() {
     }
   };
 
-  const handleFlatten = async () => {
-    if (!processedPdfUrl) return;
+  const handleFlatten = async (editedPdfFile: File): Promise<string> => {
+    if (!editedPdfFile || editedPdfFile.type !== 'application/pdf') {
+      throw new Error('Invalid PDF file');
+    }
 
     const toastId = toast.loading('Flattening PDF...');
 
     try {
-      // TODO: Call backend flatten API
-      // const response = await fetch('/api/a3/flatten', {
-      //   method: 'POST',
-      //   body: JSON.stringify({ pdfUrl: processedPdfUrl }),
-      // });
-      // const data = await response.json();
-      
-      // For now, just simulate
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const form = new FormData();
+      form.append('file', editedPdfFile);
+
+      const API_BASE = process.env.NEXT_PUBLIC_A3_API || '';
+      const flattenUrl = (API_BASE ? API_BASE : '') + '/api/a3/flatten';
+
+      const uploadResp = await fetch(flattenUrl, {
+        method: 'POST',
+        body: form,
+      });
+
+      if (!uploadResp.ok) {
+        let msg = `Flatten failed: ${uploadResp.status}`;
+        try {
+          const j = await uploadResp.json();
+          if (j && j.detail) msg = String(j.detail);
+        } catch (_) {}
+        throw new Error(msg);
+      }
+
+      const result = await uploadResp.json();
+      const downloadUrl = result?.downloadUrl || null;
+      if (!downloadUrl) throw new Error('Flatten did not return download URL');
+
       toast.success('PDF flattened successfully!', { id: toastId });
+
+      // For inline preview in the modal, use the `/view/{filename}` endpoint
+      const fileName = downloadUrl.split('/').pop() || '';
+      let previewUrl = `/view/${fileName}`;
+      if (API_BASE) {
+        previewUrl = API_BASE.replace(/\/$/, '') + previewUrl;
+      }
+      return previewUrl;
     } catch (err) {
-      const errorMessage = 'Flattening failed';
-      setError(errorMessage);
+      const errorMessage = err instanceof Error ? err.message : 'Flatten failed';
       toast.error(errorMessage, { id: toastId });
       throw err;
     }
@@ -201,54 +231,6 @@ export default function A3AutomationPage() {
                 Remove file
               </button>
             )}
-          </div>
-
-          {/* Processing Options */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Settings className="h-5 w-5 text-m4l-blue" />
-              <h3 className="text-lg font-semibold text-m4l-blue">Processing Options</h3>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="template" className="block text-sm font-medium text-gray-700 mb-2">
-                  Template Configuration
-                </label>
-                <select
-                  id="template"
-                  value={selectedTemplate}
-                  onChange={(e) => setSelectedTemplate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-m4l-orange focus:border-transparent"
-                >
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={spellCheckEnabled}
-                  onChange={(e) => setSpellCheckEnabled(e.target.checked)}
-                  className="w-4 h-4 text-m4l-orange focus:ring-m4l-orange rounded"
-                />
-                <span className="text-sm text-gray-700">Enable spell checking</span>
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={customFieldsEnabled}
-                  onChange={(e) => setCustomFieldsEnabled(e.target.checked)}
-                  className="w-4 h-4 text-m4l-orange focus:ring-m4l-orange rounded"
-                />
-                <span className="text-sm text-gray-700">Use custom field positions</span>
-              </label>
-            </div>
           </div>
 
           {/* Process Button */}
@@ -383,13 +365,61 @@ export default function A3AutomationPage() {
       </div>
     </div>
 
-      {/* PDF Preview Modal */}
+      {/* PDF Preview Modal with Instructions Box */}
       {showPdfModal && processedPdfUrl && (
-        <PdfPreviewModal
-          pdfUrl={processedPdfUrl}
-          onClose={() => setShowPdfModal(false)}
-          onFlatten={handleFlatten}
-        />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="flex gap-4 max-w-[1600px] w-full h-[90vh]">
+            {/* Modal - Left Side */}
+            <div className="flex-1">
+              <PdfPreviewModal
+                pdfUrl={processedPdfUrl}
+                onClose={() => setShowPdfModal(false)}
+                onFlatten={handleFlatten}
+              />
+            </div>
+            
+            {/* Instructions Box - Right Side */}
+            <div className="w-80 bg-white rounded-xl shadow-2xl p-6 flex flex-col">
+              <div className="flex items-start gap-3 mb-4">
+                <svg className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="font-bold text-gray-900 text-lg">How to Edit & Flatten</h3>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto">
+                <ol className="space-y-4 text-sm text-gray-700">
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-semibold flex items-center justify-center text-xs">1</span>
+                    <span className="pt-0.5">Make your edits in the PDF viewer</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-semibold flex items-center justify-center text-xs">2</span>
+                    <span className="pt-0.5">Click the download button in the PDF toolbar and select <strong>"With your changes"</strong></span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-semibold flex items-center justify-center text-xs">3</span>
+                    <span className="pt-0.5">Save the edited PDF to your computer</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-semibold flex items-center justify-center text-xs">4</span>
+                    <span className="pt-0.5">Click the <strong>"Flatten PDF"</strong> button in the modal</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-semibold flex items-center justify-center text-xs">5</span>
+                    <span className="pt-0.5">Upload the edited PDF you just downloaded</span>
+                  </li>
+                </ol>
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <p className="text-xs text-gray-500 text-center">
+                  💡 Tip: The browser's PDF editor lets you fill forms directly
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

@@ -1,0 +1,52 @@
+{
+  "left_box_analysis": {
+    "has_deletion_marks": true,
+    "total_items": 1,
+    "interrupted_items": 1,
+    "all_items_interrupted": true,
+    "deletion_details": [
+      {
+        "item_number": 1,
+        "item_text": "Apply for a Commonwealth Seniors Health Card once you have reached the Age Pension age",
+        "has_diagonal_cross": true,
+        "should_delete": true
+      }
+    ]
+  },
+  "right_box_analysis": {
+    "has_deletion_marks": true,
+    "total_items": 3,
+    "interrupted_items": 1,
+    "all_items_interrupted": false,
+    "continuous_line_detected": true,
+    "continuous_line_description": "Line crosses through the second item regarding deeming rates.",
+    "deletion_details": [
+      {
+        "item_number": 1,
+        "item_text": "A Commonwealth Seniors Health Card is income tested on taxable income and deemed income from account-based pensions.",
+        "has_diagonal_cross": false,
+        "should_delete": false
+      },
+      {
+        "item_number": 2,
+        "item_text": "Deeming rates if you are single – financial assets up to $64,200 have a deeming rate of 0.75% applied, anything over $64,200 is deemed at 2.75%. If you are a couple, the threshold is $106,200.",
+        "has_diagonal_cross": true,
+        "should_delete": true
+      },
+      {
+        "item_number": 3,
+        "item_text": "Eg if you are single and have $1,064,200 in superannuation, the first $64,200 is deemed at 0.75% = $481.50 and the remaining $1,000,000 is deemed at 2.75% = $27,500 + $481.50 = $27,981.50. This falls below the $101,105 single limit so in this scenario, you will be able to successfully apply for a Commonwealth Seniors Health card.",
+        "has_diagonal_cross": false,
+        "should_delete": false
+      }
+    ]
+  },
+  "row_deletion_rule": {
+    "left_box_has_diagonal_marks": true,
+    "right_box_has_diagonal_marks": true,
+    "both_boxes_have_marks": true,
+    "should_delete_entire_row": true,
+    "explanation": "Both boxes have diagonal marks, so the entire row should be deleted."
+  },
+  "visual_description": "The left box has a diagonal line crossing through the text. The right box has a diagonal line crossing through the second item regarding deeming rates."
+}

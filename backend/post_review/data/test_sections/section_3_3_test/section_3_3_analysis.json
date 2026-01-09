@@ -1,0 +1,77 @@
+{
+  "raw_analysis": "```json\n{\n    \"left_box_analysis\": {\n        \"has_deletion_marks\": true,\n        \"total_items\": 1,\n        \"interrupted_items\": 1,\n        \"all_items_interrupted\": true,\n        \"deletion_details\": [\n            {\n                \"item_number\": 1,\n                \"item_text\": \"Maintain at least the minimum pension\",\n                \"has_diagonal_cross\": true,\n                \"should_delete\": true\n            }\n        ]\n    },\n    \"right_box_analysis\": {\n        \"has_deletion_marks\": true,\n        \"total_items\": 7,\n        \"interrupted_items\": 5,\n        \"all_items_interrupted\": false,\n        \"continuous_line_detected\": true,\n        \"continuous_line_description\": \"Line starts at '65-74', goes through '75-79', '80-84', '85-89', and ends at '90-94'\",\n        \"deletion_details\": [\n            {\n                \"item_number\": 1,\n                \"item_text\": \"Under 65 - 4%\",\n                \"has_diagonal_cross\": false,\n                \"should_delete\": false\n            },\n            {\n                \"item_number\": 2,\n                \"item_text\": \"65-74 - 5%\",\n                \"has_diagonal_cross\": true,\n                \"should_delete\": true\n            },\n            {\n                \"item_number\": 3,\n                \"item_text\": \"75-79 - 6%\",\n                \"has_diagonal_cross\": true,\n                \"should_delete\": true\n            },\n            {\n                \"item_number\": 4,\n                \"item_text\": \"80-84 - 7%\",\n                \"has_diagonal_cross\": true,\n                \"should_delete\": true\n            },\n            {\n                \"item_number\": 5,\n                \"item_text\": \"85-89 - 9%\",\n                \"has_diagonal_cross\": true,\n                \"should_delete\": true\n            },\n            {\n                \"item_number\": 6,\n                \"item_text\": \"90-94 - 11%\",\n                \"has_diagonal_cross\": true,\n                \"should_delete\": true\n            },\n            {\n                \"item_number\": 7,\n                \"item_text\": \"95 or more - 14%\",\n                \"has_diagonal_cross\": false,\n                \"should_delete\": false\n            }\n        ]\n    },\n    \"row_deletion_rule\": {\n        \"both_boxes_have_marks\": true,\n        \"should_delete_entire_row\": true,\n        \"explanation\": \"Both left and right boxes have deletion marks, triggering the enhanced row deletion rule.\"\n    },\n    \"visual_description\": \"The left box contains a diagonal line crossing through the text. The right box has a continuous diagonal line starting at '65-74' and ending at '90-94', crossing through multiple items.\"\n}\n```",
+  "parsed_data": {
+    "left_box_analysis": {
+      "has_deletion_marks": true,
+      "total_items": 1,
+      "interrupted_items": 1,
+      "all_items_interrupted": true,
+      "deletion_details": [
+        {
+          "item_number": 1,
+          "item_text": "Maintain at least the minimum pension",
+          "has_diagonal_cross": true,
+          "should_delete": true
+        }
+      ]
+    },
+    "right_box_analysis": {
+      "has_deletion_marks": true,
+      "total_items": 7,
+      "interrupted_items": 5,
+      "all_items_interrupted": false,
+      "continuous_line_detected": true,
+      "continuous_line_description": "Line starts at '65-74', goes through '75-79', '80-84', '85-89', and ends at '90-94'",
+      "deletion_details": [
+        {
+          "item_number": 1,
+          "item_text": "Under 65 - 4%",
+          "has_diagonal_cross": false,
+          "should_delete": false
+        },
+        {
+          "item_number": 2,
+          "item_text": "65-74 - 5%",
+          "has_diagonal_cross": true,
+          "should_delete": true
+        },
+        {
+          "item_number": 3,
+          "item_text": "75-79 - 6%",
+          "has_diagonal_cross": true,
+          "should_delete": true
+        },
+        {
+          "item_number": 4,
+          "item_text": "80-84 - 7%",
+          "has_diagonal_cross": true,
+          "should_delete": true
+        },
+        {
+          "item_number": 5,
+          "item_text": "85-89 - 9%",
+          "has_diagonal_cross": true,
+          "should_delete": true
+        },
+        {
+          "item_number": 6,
+          "item_text": "90-94 - 11%",
+          "has_diagonal_cross": true,
+          "should_delete": true
+        },
+        {
+          "item_number": 7,
+          "item_text": "95 or more - 14%",
+          "has_diagonal_cross": false,
+          "should_delete": false
+        }
+      ]
+    },
+    "row_deletion_rule": {
+      "both_boxes_have_marks": true,
+      "should_delete_entire_row": true,
+      "explanation": "Both left and right boxes have deletion marks, triggering the enhanced row deletion rule."
+    },
+    "visual_description": "The left box contains a diagonal line crossing through the text. The right box has a continuous diagonal line starting at '65-74' and ending at '90-94', crossing through multiple items."
+  }
+}

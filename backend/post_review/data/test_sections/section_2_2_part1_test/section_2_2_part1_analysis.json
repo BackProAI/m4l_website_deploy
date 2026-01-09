@@ -1,0 +1,36 @@
+{
+  "section_name": "Section_2_2_Part1",
+  "raw_analysis": "```json\n{\n    \"left_box_portfolio_selection\": {\n        \"portfolio_text_found\": true,\n        \"conservative_status\": \"crossed_out\",\n        \"balanced_status\": \"crossed_out\",\n        \"growth_status\": \"circled\",\n        \"selected_word\": \"growth\",\n        \"words_to_delete\": [\"conservative\", \"balanced\"]\n    },\n    \"right_box_sell_additions\": {\n        \"sell_section_found\": true,\n        \"has_handwritten_text\": true,\n        \"handwritten_sell_items\": [\n            \"Current investments\",\n            \"Please put\",\n            \"those in\"\n        ]\n    },\n    \"right_box_purchase_additions\": {\n        \"purchase_section_found\": true,\n        \"has_handwritten_text\": true,\n        \"handwritten_purchase_items\": [\n            \"$5000 Anz com account\",\n            \"$404,079 into the one path or low cost index fund\"\n        ]\n    },\n    \"visual_description\": \"The left box contains the text 'Invest in a conservative / balanced / growth style of asset allocation' with 'conservative' and 'balanced' crossed out and 'growth' circled. The right box has sections for 'Sell...' and 'Purchase...' with three handwritten notes next to the sell section and two handwritten notes next to the purchase section.\"\n}\n```",
+  "parsed_data": {
+    "left_box_portfolio_selection": {
+      "portfolio_text_found": true,
+      "conservative_status": "crossed_out",
+      "balanced_status": "crossed_out",
+      "growth_status": "circled",
+      "selected_word": "growth",
+      "words_to_delete": [
+        "conservative",
+        "balanced"
+      ]
+    },
+    "right_box_sell_additions": {
+      "sell_section_found": true,
+      "has_handwritten_text": true,
+      "handwritten_sell_items": [
+        "Current investments",
+        "Please put",
+        "those in"
+      ]
+    },
+    "right_box_purchase_additions": {
+      "purchase_section_found": true,
+      "has_handwritten_text": true,
+      "handwritten_purchase_items": [
+        "$5000 Anz com account",
+        "$404,079 into the one path or low cost index fund"
+      ]
+    },
+    "visual_description": "The left box contains the text 'Invest in a conservative / balanced / growth style of asset allocation' with 'conservative' and 'balanced' crossed out and 'growth' circled. The right box has sections for 'Sell...' and 'Purchase...' with three handwritten notes next to the sell section and two handwritten notes next to the purchase section."
+  },
+  "timestamp": "2026-01-09T18:10:05.516888"
+}

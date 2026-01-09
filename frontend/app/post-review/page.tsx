@@ -1,17 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Upload, FileText, CheckCircle2, Settings, Download, Eye, AlertCircle } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Download, AlertCircle } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
 
 export default function PostReviewPage() {
   // State management
   const [files, setFiles] = useState<{pdf: File | null, word: File | null}>({pdf: null, word: null});
-  const [enableOCR, setEnableOCR] = useState(true);
-  const [createBackup, setCreateBackup] = useState(true);
-  const [preserveFormatting, setPreserveFormatting] = useState(true);
-  const [showPreview, setShowPreview] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState(0);
   const [results, setResults] = useState<any>(null);
@@ -88,36 +84,79 @@ export default function PostReviewPage() {
     setProcessingStep(0);
     setError(null);
 
-    const toastId = toast.loading('Processing documents...');
+    const toastId = toast.loading('Uploading documents...');
 
     try {
-      // Simulate processing steps
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('pdf', files.pdf);
+      formData.append('docx', files.word);
+
+      const API_BASE = process.env.NEXT_PUBLIC_A3_API || '';
+      const processUrl = (API_BASE ? API_BASE : '') + '/api/post-review/process';
+
+      // Processing steps for user feedback
       const steps = [
+        'Uploading documents...',
         'Extracting PDF sections...',
         'Running OCR on annotations...',
-        'Analyzing changes...',
-        'Applying modifications to Word document...',
-        'Finalizing document...'
+        'Analysing changes...',
+        'Applying modifications to Word document...'
       ];
 
-      for (let i = 0; i < steps.length; i++) {
-        setProcessingStep(i);
-        toast.loading(steps[i], { id: toastId });
-        await new Promise(resolve => setTimeout(resolve, 1500));
+      // Update toast with upload status
+      setProcessingStep(0);
+      toast.loading(steps[0], { id: toastId });
+
+      // Make API call
+      const response = await fetch(processUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let errorMsg = `Processing failed: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.detail) {
+            errorMsg = String(errorData.detail);
+          }
+        } catch (_) {}
+        throw new Error(errorMsg);
       }
 
-      // Mock results
+      const data = await response.json();
+      
+      // Simulate progress updates for better UX
+      for (let i = 1; i < steps.length; i++) {
+        setProcessingStep(i);
+        toast.loading(steps[i], { id: toastId });
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
+
+      // Extract results
+      const result = data.result || {};
+      const summary = result.processing_summary || {};
+      
+      // Check if processing was successful
+      if (!result.success) {
+        throw new Error(result.errors?.[0] || 'Processing failed');
+      }
+
+      // Set results for display
       setResults({
-        sectionsProcessed: 18,
-        changesDetected: 24,
-        modificationsApplied: 22,
-        processingTime: '12.4s',
-        outputFile: `${files.word!.name.replace('.docx', '').replace('.doc', '')}_updated.docx`
+        sectionsProcessed: summary.total_sections || 0,
+        changesDetected: summary.total_changes_applied || 0,
+        modificationsApplied: summary.successful_sections || 0,
+        finalDocument: result.final_document,
+        jobId: data.jobId,
+        processingTime: `${summary.total_sections || 0} sections`,
+        outputFile: result.final_document ? result.final_document.split(/[/\\]/).pop() : 'updated_document.docx'
       });
 
       toast.success('Documents processed successfully!', { id: toastId });
     } catch (err) {
-      const errorMsg = 'Processing failed. Please try again.';
+      const errorMsg = err instanceof Error ? err.message : 'Processing failed. Please try again.';
       setError(errorMsg);
       toast.error(errorMsg, { id: toastId });
     } finally {
@@ -130,6 +169,29 @@ export default function PostReviewPage() {
     setResults(null);
     setError(null);
     setProcessingStep(0);
+  };
+
+  const handleDownload = () => {
+    if (!results?.finalDocument || !results?.jobId) {
+      toast.error('No processed document available');
+      return;
+    }
+
+    // Extract just the filename from the full path
+    const fileName = results.finalDocument.split(/[/\\]/).pop() || 'updated_document.docx';
+    
+    // The file is in a subdirectory: outputs/{jobId}/{filename}
+    // We need to construct the path with the jobId
+    const API_BASE = process.env.NEXT_PUBLIC_A3_API || '';
+    const downloadUrl = `${API_BASE}/downloads/${results.jobId}/${fileName}`;
+    
+    // Create temporary link and trigger download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = fileName;
+    link.click();
+    
+    toast.success('Download started!');
   };
 
   return (
@@ -228,68 +290,6 @@ export default function PostReviewPage() {
             </div>
           </div>
 
-          {/* Processing Options */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Settings className="h-5 w-5 text-m4l-blue" />
-              <h3 className="text-lg font-semibold text-m4l-blue">Processing Options</h3>
-            </div>
-
-            <div className="space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={enableOCR}
-                  onChange={(e) => setEnableOCR(e.target.checked)}
-                  className="w-4 h-4 text-m4l-orange focus:ring-m4l-orange rounded"
-                />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Enable OCR</p>
-                  <p className="text-xs text-gray-500">Use GPT-4o Vision to extract handwriting</p>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={createBackup}
-                  onChange={(e) => setCreateBackup(e.target.checked)}
-                  className="w-4 h-4 text-m4l-orange focus:ring-m4l-orange rounded"
-                />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Create backup</p>
-                  <p className="text-xs text-gray-500">Save original document before processing</p>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={preserveFormatting}
-                  onChange={(e) => setPreserveFormatting(e.target.checked)}
-                  className="w-4 h-4 text-m4l-orange focus:ring-m4l-orange rounded"
-                />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Preserve formatting</p>
-                  <p className="text-xs text-gray-500">Maintain original document styles</p>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showPreview}
-                  onChange={(e) => setShowPreview(e.target.checked)}
-                  className="w-4 h-4 text-m4l-orange focus:ring-m4l-orange rounded"
-                />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Show preview</p>
-                  <p className="text-xs text-gray-500">Display changes before final save</p>
-                </div>
-              </label>
-            </div>
-          </div>
-
           {/* Process Button */}
           {!isProcessing && !results && (
             <button
@@ -334,7 +334,7 @@ export default function PostReviewPage() {
                 {[
                   'Extracting PDF sections...',
                   'Running OCR on annotations...',
-                  'Analyzing changes...',
+                  'Analysing changes...',
                   'Applying modifications to Word document...',
                   'Finalizing document...'
                 ].map((step, index) => (
@@ -393,12 +393,7 @@ export default function PostReviewPage() {
 
               <div className="space-y-3">
                 <button
-                  className="w-full bg-m4l-blue text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Eye className="h-5 w-5" />
-                  Preview Changes
-                </button>
-                <button
+                  onClick={handleDownload}
                   className="w-full bg-m4l-orange text-white px-4 py-2 rounded-lg font-medium hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"
                 >
                   <Download className="h-5 w-5" />
@@ -441,7 +436,7 @@ export default function PostReviewPage() {
                   3
                 </div>
                 <p className="text-sm text-gray-700 pt-1">
-                  AI analyzes changes using 3-strategy text matching
+                  AI analyses changes using 3-strategy text matching
                 </p>
               </div>
 

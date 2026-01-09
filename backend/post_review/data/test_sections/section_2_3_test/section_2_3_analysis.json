@@ -1,0 +1,56 @@
+{
+  "left_box_analysis": {
+    "has_deletion_marks": true,
+    "total_items": 1,
+    "interrupted_items": 1,
+    "all_items_interrupted": true,
+    "deletion_details": [
+      {
+        "item_number": 1,
+        "item_text": "Ensure your estate planning is up to date",
+        "has_diagonal_cross": true,
+        "should_delete": true
+      }
+    ]
+  },
+  "right_box_analysis": {
+    "has_deletion_marks": true,
+    "total_items": 4,
+    "interrupted_items": 4,
+    "all_items_interrupted": true,
+    "continuous_line_detected": true,
+    "continuous_line_description": "Line starts at the top of the box, crosses through all text items, and ends at the bottom.",
+    "deletion_details": [
+      {
+        "item_number": 1,
+        "item_text": "Please refer to our online estate planning report located on our website (https://www.mlfs.com.au/estate-planning/). Based on this report you may need to:",
+        "has_diagonal_cross": true,
+        "should_delete": true
+      },
+      {
+        "item_number": 2,
+        "item_text": "Get an updated Will done",
+        "has_diagonal_cross": true,
+        "should_delete": true
+      },
+      {
+        "item_number": 3,
+        "item_text": "Have an Enduring Power of Attorney",
+        "has_diagonal_cross": true,
+        "should_delete": true
+      },
+      {
+        "item_number": 4,
+        "item_text": "Set out in your Will who will be the beneficiary of your assets on death and when they will receive them",
+        "has_diagonal_cross": true,
+        "should_delete": true
+      }
+    ]
+  },
+  "row_deletion_rule": {
+    "both_boxes_all_interrupted": true,
+    "should_delete_entire_row": true,
+    "explanation": "Both left and right boxes have diagonal marks interrupting all their content, so the entire row should be deleted."
+  },
+  "visual_description": "Both boxes have diagonal lines crossing through all text, indicating deletion of all content in the row."
+}

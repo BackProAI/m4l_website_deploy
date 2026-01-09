@@ -1,0 +1,83 @@
+{
+  "raw_analysis": "```json\n{\n    \"left_box_analysis\": {\n        \"has_deletion_marks\": true,\n        \"total_items\": 1,\n        \"interrupted_items\": 1,\n        \"all_items_interrupted\": true,\n        \"deletion_details\": [\n            {\n                \"item_number\": 1,\n                \"item_text\": \"Qualify for the age pension\",\n                \"has_diagonal_cross\": true,\n                \"should_delete\": true\n            }\n        ]\n    },\n    \"right_box_analysis\": {\n        \"has_deletion_marks\": true,\n        \"total_items\": 8,\n        \"interrupted_items\": 2,\n        \"all_items_interrupted\": false,\n        \"continuous_line_detected\": true,\n        \"continuous_line_description\": \"Line starts at 'Single $714,500', goes through 'A couple, combined $1,074,000'\",\n        \"deletion_details\": [\n            {\n                \"item_number\": 1,\n                \"item_text\": \"The maximum age pension for singles is $1,178.70 a fortnight or $30,646 pa\",\n                \"has_diagonal_cross\": false,\n                \"should_delete\": false\n            },\n            {\n                \"item_number\": 2,\n                \"item_text\": \"The maximum age pension for couples is $1,777.00 a fortnight or $46,202 pa\",\n                \"has_diagonal_cross\": false,\n                \"should_delete\": false\n            },\n            {\n                \"item_number\": 3,\n                \"item_text\": \"Asset limits for a full age pension: Single $321,500 $579,500\",\n                \"has_diagonal_cross\": false,\n                \"should_delete\": false\n            },\n            {\n                \"item_number\": 4,\n                \"item_text\": \"A couple, combined $481,500 $739,500\",\n                \"has_diagonal_cross\": false,\n                \"should_delete\": false\n            },\n            {\n                \"item_number\": 5,\n                \"item_text\": \"Asset limits for a part age pension: Single $714,500 $972,500\",\n                \"has_diagonal_cross\": true,\n                \"should_delete\": true\n            },\n            {\n                \"item_number\": 6,\n                \"item_text\": \"A couple, combined $1,074,000 $1,332,000\",\n                \"has_diagonal_cross\": true,\n                \"should_delete\": true\n            },\n            {\n                \"item_number\": 7,\n                \"item_text\": \"Income test for age pension: Single\",\n                \"has_diagonal_cross\": false,\n                \"should_delete\": false\n            },\n            {\n                \"item_number\": 8,\n                \"item_text\": \"Income per fortnight Amount your pension will reduce by\",\n                \"has_diagonal_cross\": false,\n                \"should_delete\": false\n            }\n        ]\n    },\n    \"row_deletion_rule\": {\n        \"both_boxes_have_marks\": true,\n        \"should_delete_entire_row\": true,\n        \"explanation\": \"Both left and right boxes have deletion marks, triggering the enhanced row deletion rule.\"\n    },\n    \"visual_description\": \"The left box contains a diagonal line crossing through the text. The right box has a diagonal line crossing through two items related to asset limits for a part age pension.\"\n}\n```",
+  "parsed_data": {
+    "left_box_analysis": {
+      "has_deletion_marks": true,
+      "total_items": 1,
+      "interrupted_items": 1,
+      "all_items_interrupted": true,
+      "deletion_details": [
+        {
+          "item_number": 1,
+          "item_text": "Qualify for the age pension",
+          "has_diagonal_cross": true,
+          "should_delete": true
+        }
+      ]
+    },
+    "right_box_analysis": {
+      "has_deletion_marks": true,
+      "total_items": 8,
+      "interrupted_items": 2,
+      "all_items_interrupted": false,
+      "continuous_line_detected": true,
+      "continuous_line_description": "Line starts at 'Single $714,500', goes through 'A couple, combined $1,074,000'",
+      "deletion_details": [
+        {
+          "item_number": 1,
+          "item_text": "The maximum age pension for singles is $1,178.70 a fortnight or $30,646 pa",
+          "has_diagonal_cross": false,
+          "should_delete": false
+        },
+        {
+          "item_number": 2,
+          "item_text": "The maximum age pension for couples is $1,777.00 a fortnight or $46,202 pa",
+          "has_diagonal_cross": false,
+          "should_delete": false
+        },
+        {
+          "item_number": 3,
+          "item_text": "Asset limits for a full age pension: Single $321,500 $579,500",
+          "has_diagonal_cross": false,
+          "should_delete": false
+        },
+        {
+          "item_number": 4,
+          "item_text": "A couple, combined $481,500 $739,500",
+          "has_diagonal_cross": false,
+          "should_delete": false
+        },
+        {
+          "item_number": 5,
+          "item_text": "Asset limits for a part age pension: Single $714,500 $972,500",
+          "has_diagonal_cross": true,
+          "should_delete": true
+        },
+        {
+          "item_number": 6,
+          "item_text": "A couple, combined $1,074,000 $1,332,000",
+          "has_diagonal_cross": true,
+          "should_delete": true
+        },
+        {
+          "item_number": 7,
+          "item_text": "Income test for age pension: Single",
+          "has_diagonal_cross": false,
+          "should_delete": false
+        },
+        {
+          "item_number": 8,
+          "item_text": "Income per fortnight Amount your pension will reduce by",
+          "has_diagonal_cross": false,
+          "should_delete": false
+        }
+      ]
+    },
+    "row_deletion_rule": {
+      "both_boxes_have_marks": true,
+      "should_delete_entire_row": true,
+      "explanation": "Both left and right boxes have deletion marks, triggering the enhanced row deletion rule."
+    },
+    "visual_description": "The left box contains a diagonal line crossing through the text. The right box has a diagonal line crossing through two items related to asset limits for a part age pension."
+  }
+}

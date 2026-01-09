@@ -15,7 +15,7 @@ class A3TemplateProcessor:
     
     def __init__(self, template_path: Path = None, custom_fields_config: Dict = None):
         """Initialize with the blank template."""
-        self.template_path = template_path or Path("A3_templates/More4Life A3 Goals - blank.pdf")
+        self.template_path = template_path or Path("backend/a3_automation/A3_templates/More4Life A3 Goals - blank.pdf")
         self.form_fields_config = custom_fields_config or self._get_default_form_fields_config()
         
     def _get_default_form_fields_config(self) -> Dict[str, List[Dict]]:
@@ -179,16 +179,11 @@ class A3TemplateProcessor:
             field_name = field_config["name"]
             rect = fitz.Rect(field_config["rect"])
             
-            # Use PyMuPDF's add_textfield method for better Adobe Acrobat compatibility
-            if field_config.get("show_borders", True):
-                border_color = (0.0, 0.0, 1.0)  # Blue border for visibility
-                fill_color = (0.95, 0.95, 1.0) if field_config.get("show_background", False) else (1, 1, 1)
-            else:
-                border_color = None
-                fill_color = None
+            # Always use transparent background so template lines are visible
+            border_color = None  # No border
+            fill_color = None  # Transparent background
             
             # Create text field widget with Adobe Acrobat optimization
-            # Note: PyMuPDF doesn't have add_textfield, use Widget approach
             field_widget = fitz.Widget()
             field_widget.field_name = field_name
             field_widget.field_type = fitz.PDF_WIDGET_TYPE_TEXT
@@ -196,24 +191,16 @@ class A3TemplateProcessor:
             
             # Adobe Acrobat compatibility settings
             field_widget.annot_flags = 0  # No restrictions - fully interactive
+            field_widget.field_flags = 4096  # PDF_FIELD_IS_MULTILINE - enable multiline text
             field_widget.text_font = "helv"
             field_widget.text_fontsize = field_config.get("fontsize", 12)
             field_widget.text_maxlen = 0  # No text length limit
             field_widget.text_color = (0, 0, 0)  # Black text
             
-            # Set border and fill colors
-            if border_color:
-                field_widget.border_color = border_color
-                field_widget.border_width = 1
-                field_widget.border_style = "solid"
-            else:
-                field_widget.border_color = None
-                field_widget.border_width = 0
-                
-            if fill_color:
-                field_widget.fill_color = fill_color
-            else:
-                field_widget.fill_color = None
+            # Set transparent background
+            field_widget.border_color = None
+            field_widget.border_width = 0
+            field_widget.fill_color = None  # Transparent - template lines visible
                 
             # Add to page
             page.add_widget(field_widget)
@@ -420,6 +407,76 @@ class A3TemplateProcessor:
             
         finally:
             doc.close()
+    
+    def populate_template_with_mappings(self, field_mappings: Dict[str, str], output_path: Path = None, base_template: Path = None) -> Path:
+        """Populate template using direct field name to text mappings."""
+        if not output_path:
+            timestamp = int(time.time())
+            output_path = Path(f"processed_documents/A3_Populated_{timestamp}.pdf")
+        
+        output_path.parent.mkdir(exist_ok=True)
+        
+        # Use existing template if provided, otherwise create new one
+        if base_template and base_template.exists():
+            template_with_fields = base_template
+            print(f"✅ Using existing template: {template_with_fields}")
+        else:
+            # Create new template with form fields
+            template_with_fields = self.create_template_with_form_fields()
+            print(f"📝 Created new template: {template_with_fields}")
+        
+        # Open the template with form fields
+        doc = fitz.open(template_with_fields)
+        
+        try:
+            print(f"🎯 Populating {len(field_mappings)} fields with extracted text...")
+            
+            # Get page mapping for fields
+            field_to_page = {}
+            for page_key, fields in self.form_fields_config.items():
+                page_number = 0 if page_key == 'page_1' else 1
+                for field in fields:
+                    field_to_page[field['name']] = page_number
+            
+            populated_count = 0
+            
+            for field_name, text_content in field_mappings.items():
+                if text_content.strip():
+                    try:
+                        # Get the correct page for this field
+                        target_page_num = field_to_page.get(field_name)
+                        
+                        if target_page_num is not None and target_page_num < len(doc):
+                            page = doc[target_page_num]
+                            widgets = page.widgets()
+                            
+                            field_found = False
+                            for widget in widgets:
+                                if widget.field_name == field_name:
+                                    widget.field_value = text_content
+                                    widget.update()
+                                    field_found = True
+                                    populated_count += 1
+                                    print(f"   ✅ Page {target_page_num + 1} - {field_name}: {text_content[:50]}{'...' if len(text_content) > 50 else ''}")
+                                    break
+                            
+                            if not field_found:
+                                print(f"   ⚠️ Field '{field_name}' not found on page {target_page_num + 1}")
+                    except Exception as e:
+                        print(f"   ❌ Error populating field '{field_name}': {e}")
+            
+            print(f"✅ Successfully populated {populated_count} fields")
+            
+            # Save the populated PDF
+            doc.save(str(output_path), garbage=4, deflate=True)
+            doc.close()
+            
+            print(f"📁 Saved populated template: {output_path}")
+            return output_path
+            
+        except Exception as e:
+            doc.close()
+            raise Exception(f"Failed to populate template: {e}")
     
     def populate_template(self, extracted_results: List[Dict[str, Any]], output_path: Path = None, base_template: Path = None) -> Path:
         """Use existing template and automatically populate it with extracted text."""

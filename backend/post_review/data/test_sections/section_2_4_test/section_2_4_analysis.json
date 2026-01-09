@@ -1,0 +1,38 @@
+{
+  "left_box_analysis": {
+    "has_deletion_marks": false,
+    "total_items": 1,
+    "interrupted_items": 0,
+    "all_items_interrupted": false,
+    "deletion_details": [
+      {
+        "item_number": 1,
+        "item_text": "Have enough money to pay hospital bills",
+        "has_diagonal_cross": false,
+        "should_delete": false
+      }
+    ]
+  },
+  "right_box_analysis": {
+    "has_deletion_marks": false,
+    "total_items": 1,
+    "interrupted_items": 0,
+    "all_items_interrupted": false,
+    "continuous_line_detected": false,
+    "continuous_line_description": "",
+    "deletion_details": [
+      {
+        "item_number": 1,
+        "item_text": "Continue private health insurance.",
+        "has_diagonal_cross": false,
+        "should_delete": false
+      }
+    ]
+  },
+  "row_deletion_rule": {
+    "both_boxes_all_interrupted": false,
+    "should_delete_entire_row": false,
+    "explanation": "Neither box has deletion marks interrupting all content."
+  },
+  "visual_description": "No diagonal or cross deletion marks detected in either box."
+}

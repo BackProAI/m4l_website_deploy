@@ -1,0 +1,37 @@
+{
+  "left_box_analysis": {
+    "has_deletion_marks": false,
+    "has_replacement_marks": false,
+    "has_any_handwriting": false,
+    "total_items": 1,
+    "interrupted_items": 0,
+    "replacement_items": 0,
+    "all_items_interrupted": false,
+    "deletion_details": [],
+    "replacement_details": []
+  },
+  "right_box_analysis": {
+    "has_deletion_marks": false,
+    "has_replacement_marks": false,
+    "has_any_handwriting": false,
+    "total_items": 1,
+    "interrupted_items": 0,
+    "replacement_items": 0,
+    "all_items_interrupted": false,
+    "continuous_line_detected": false,
+    "continuous_line_description": "",
+    "deletion_details": [],
+    "replacement_details": []
+  },
+  "row_deletion_rule": {
+    "both_boxes_have_marks": false,
+    "should_delete_entire_row": false,
+    "explanation": "No deletion or replacement marks detected in either box."
+  },
+  "no_change_rule": {
+    "no_handwriting_detected": true,
+    "should_leave_unchanged": true,
+    "explanation": "No handwritten marks detected, so no changes are needed."
+  },
+  "visual_description": "No handwritten marks detected"
+}

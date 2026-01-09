@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Download, 
   FileText, 
@@ -11,8 +11,10 @@ import {
   Clock,
   Search,
   Filter,
-  Calendar
+  Calendar,
+  Loader2
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface HistoryItem {
   id: string;
@@ -28,50 +30,48 @@ export default function HistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTool, setFilterTool] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - replace with real API call
-  const mockHistory: HistoryItem[] = [
-    {
-      id: '1',
-      tool: 'a3-automation',
-      fileName: 'financial-planning-form.pdf',
-      status: 'completed',
-      timestamp: '2026-01-08T14:30:00',
-      downloadUrl: '/downloads/a3-processed-1.pdf'
-    },
-    {
-      id: '2',
-      tool: 'post-review',
-      fileName: 'client-review-document.pdf',
-      status: 'completed',
-      timestamp: '2026-01-08T13:15:00',
-      downloadUrl: '/downloads/post-review-2.docx'
-    },
-    {
-      id: '3',
-      tool: 'value-creator',
-      fileName: 'value-creator-letter.pdf',
-      status: 'completed',
-      timestamp: '2026-01-08T11:45:00',
-      downloadUrl: '/downloads/value-creator-3.docx'
-    },
-    {
-      id: '4',
-      tool: 'a3-automation',
-      fileName: 'handwritten-form-scan.pdf',
-      status: 'failed',
-      timestamp: '2026-01-07T16:20:00',
-      error: 'Unable to extract text from image'
-    },
-    {
-      id: '5',
-      tool: 'post-review',
-      fileName: 'quarterly-review.pdf',
-      status: 'completed',
-      timestamp: '2026-01-07T10:00:00',
-      downloadUrl: '/downloads/post-review-5.docx'
-    },
-  ];
+  // Fetch history on mount
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/history?days=30');
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch history: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('History API response:', data); // Debug log
+      
+      // Handle both possible response formats
+      if (Array.isArray(data)) {
+        setHistory(data);
+      } else if (data && Array.isArray(data.history)) {
+        setHistory(data.history);
+      } else {
+        console.error('Unexpected response format:', data);
+        setHistory([]);
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load history';
+      console.error('History fetch error:', err);
+      setError(errorMsg);
+      toast.error(errorMsg);
+      setHistory([]); // Set empty array on error
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getToolIcon = (tool: string) => {
     switch (tool) {
@@ -142,7 +142,7 @@ export default function HistoryPage() {
   };
 
   // Filter history
-  const filteredHistory = mockHistory.filter((item) => {
+  const filteredHistory = history.filter((item) => {
     const matchesSearch = item.fileName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTool = filterTool === 'all' || item.tool === filterTool;
     const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
@@ -156,11 +156,34 @@ export default function HistoryPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-m4l-blue mb-2">Processing History</h1>
           <p className="text-gray-600">
-            View and download your previously processed documents
+            View and download your previously processed documents (last 30 days)
           </p>
         </div>
 
-        {/* Filters */}
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 text-m4l-blue animate-spin" />
+            <span className="ml-3 text-gray-600">Loading history...</span>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !isLoading && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
+            <p className="text-red-800">{error}</p>
+            <button
+              onClick={fetchHistory}
+              className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Content */}
+        {!isLoading && !error && (
+          <>
         <div className="bg-[var(--surface)] rounded-xl shadow-sm border border-[rgba(255,255,255,0.04)] p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
@@ -330,6 +353,8 @@ export default function HistoryPage() {
               </div>
             </div>
           </div>
+        )}
+        </>
         )}
       </div>
     </main>

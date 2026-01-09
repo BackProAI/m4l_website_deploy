@@ -17,8 +17,8 @@ import threading
 from typing import List, Dict, Any
 
 # Import the sectioned OCR system
-from sectioned_gpt4o_ocr import SectionedGPT4oOCR
-from a3_template_processor import A3TemplateProcessor
+from .sectioned_gpt4o_ocr import SectionedGPT4oOCR
+from .a3_template_processor import A3TemplateProcessor
 
 # Load environment variables
 try:
@@ -37,7 +37,7 @@ except ImportError:
 class A3SectionedProcessor:
     """A3 document processor using manual section definitions."""
     
-    def __init__(self, api_key: str = None, section_config_path: str = "A3_templates/a3_section_config.json", enable_spell_check: bool = True):
+    def __init__(self, api_key: str = None, section_config_path: str = "backend/a3_automation/A3_templates/a3_section_config.json", enable_spell_check: bool = True):
         """Initialize the sectioned A3 processor."""
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         if not self.api_key:
@@ -48,7 +48,7 @@ class A3SectionedProcessor:
         self.section_config_path = Path(section_config_path)
         
         # Initialize template processor with custom config if available
-        custom_config_path = Path("A3_templates/custom_field_position.json")
+        custom_config_path = Path("backend/a3_automation/A3_templates/custom_field_position.json")
         if custom_config_path.exists():
             print(f"✅ Found custom field configuration: {custom_config_path}")
             custom_config = self._load_custom_config(custom_config_path)
@@ -295,7 +295,11 @@ class A3SectionedProcessor:
                         )
                     else:
                         print(f"📝 Custom template not found, using standard approach")
-                        final_pdf_path = self.template_processor.populate_template(standard_results, output_path)
+                        # Pass direct field mappings to template processor
+                        final_pdf_path = self.template_processor.populate_template_with_mappings(
+                            all_field_mappings,
+                            output_path
+                        )
                     
                     processing_info['output_pdf_path'] = final_pdf_path
                     

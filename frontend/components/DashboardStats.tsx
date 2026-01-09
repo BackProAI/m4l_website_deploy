@@ -1,38 +1,52 @@
-import { FileCheck, Clock, Loader2, ArrowUp } from 'lucide-react';
+'use client';
+
+import { FileCheck, ArrowUp } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+interface HistoryItem {
+  id: string;
+  tool: string;
+  status: string;
+  timestamp: string;
+}
 
 export default function DashboardStats() {
+  const [totalDocs, setTotalDocs] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const response = await fetch('/api/history?days=30');
+        const data = await response.json();
+        
+        const historyItems: HistoryItem[] = Array.isArray(data) ? data : data.history || [];
+        setTotalDocs(historyItems.length);
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+        setTotalDocs(0);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchStats();
+  }, []);
+
   const stats = [
     {
       title: 'Documents Processed',
-      value: '1,247',
-      change: '+12% this month',
-      changePositive: true,
+      value: loading ? '...' : totalDocs.toString(),
+      change: 'Last 30 days',
+      changePositive: null,
       icon: FileCheck,
       iconBg: 'bg-orange-100',
       iconColor: 'text-m4l-orange',
     },
-    {
-      title: 'Time Saved',
-      value: '342 hrs',
-      change: '+76% efficiency',
-      changePositive: true,
-      icon: Clock,
-      iconBg: 'bg-blue-100',
-      iconColor: 'text-m4l-blue',
-    },
-    {
-      title: 'Active Jobs',
-      value: '3',
-      change: 'In processing queue',
-      changePositive: null,
-      icon: Loader2,
-      iconBg: 'bg-green-100',
-      iconColor: 'text-green-600',
-    },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-1 gap-6 mb-8">
       {stats.map((stat, index) => (
         <div
           key={index}

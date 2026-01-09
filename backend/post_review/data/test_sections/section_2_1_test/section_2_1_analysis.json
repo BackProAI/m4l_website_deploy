@@ -1,0 +1,69 @@
+{
+  "raw_analysis": "```json\n{\n    \"left_box_analysis\": {\n        \"has_interruptions\": true,\n        \"interrupted_items\": [\n            {\n                \"item_number\": 1,\n                \"item_text\": \"Maximise your superannuation contributions\",\n                \"interruption_type\": \"handwritten_notes\",\n                \"interruption_description\": \"Handwritten text around the main text\",\n                \"should_delete\": false\n            }\n        ],\n        \"total_items\": 1,\n        \"interrupted_count\": 1,\n        \"all_items_interrupted\": true\n    },\n    \"right_box_analysis\": {\n        \"has_interruptions\": true,\n        \"interrupted_items\": [\n            {\n                \"item_number\": 1,\n                \"item_text\": \"Contribute up to $30,000 as a concessional contribution this financial year.\",\n                \"interruption_type\": \"handwritten_notes\",\n                \"interruption_description\": \"Handwritten text after the sentence\",\n                \"should_delete\": false,\n                \"continuous_line_affected\": false\n            },\n            {\n                \"item_number\": 2,\n                \"item_text\": \"Contribute up to $120,000 as a non-concessional contribution this financial year.\",\n                \"interruption_type\": \"diagonal_line\",\n                \"interruption_description\": \"Diagonal line crossing through text\",\n                \"should_delete\": true,\n                \"continuous_line_affected\": true\n            },\n            {\n                \"item_number\": 3,\n                \"item_text\": \"Contribute up to $360,000 as a non-concessional contribution using the 3 year carry forward rule.\",\n                \"interruption_type\": \"diagonal_line\",\n                \"interruption_description\": \"Diagonal line crossing through text\",\n                \"should_delete\": true,\n                \"continuous_line_affected\": true\n            },\n            {\n                \"item_number\": 4,\n                \"item_text\": \"Make a downsizer contribution of up to $300,000 each from sale of family home, as long as you have lived in it for more than 10 years. Contributions must be made within 90 days of receiving the proceeds of sale.\",\n                \"interruption_type\": \"diagonal_line\",\n                \"interruption_description\": \"Diagonal line crossing through text\",\n                \"should_delete\": true,\n                \"continuous_line_affected\": true\n            }\n        ],\n        \"total_items\": 4,\n        \"interrupted_count\": 3,\n        \"all_items_interrupted\": false,\n        \"continuous_line_detected\": true,\n        \"continuous_line_description\": \"Diagonal line starts at dot point 2, passes through dot points 3 and 4\"\n    },\n    \"row_deletion_rule\": {\n        \"left_box_completely_marked\": false,\n        \"right_box_completely_marked\": false,\n        \"delete_entire_row\": false,\n        \"deletion_reason\": \"Not all items in both boxes are marked for deletion\"\n    },\n    \"visual_description\": \"The left box contains handwritten notes around the main text. The right box has a diagonal line crossing through dot points 2, 3, and 4, indicating deletion, and handwritten notes after dot point 1.\"\n}\n```",
+  "parsed_data": {
+    "left_box_analysis": {
+      "has_interruptions": true,
+      "interrupted_items": [
+        {
+          "item_number": 1,
+          "item_text": "Maximise your superannuation contributions",
+          "interruption_type": "handwritten_notes",
+          "interruption_description": "Handwritten text around the main text",
+          "should_delete": false
+        }
+      ],
+      "total_items": 1,
+      "interrupted_count": 1,
+      "all_items_interrupted": true
+    },
+    "right_box_analysis": {
+      "has_interruptions": true,
+      "interrupted_items": [
+        {
+          "item_number": 1,
+          "item_text": "Contribute up to $30,000 as a concessional contribution this financial year.",
+          "interruption_type": "handwritten_notes",
+          "interruption_description": "Handwritten text after the sentence",
+          "should_delete": false,
+          "continuous_line_affected": false
+        },
+        {
+          "item_number": 2,
+          "item_text": "Contribute up to $120,000 as a non-concessional contribution this financial year.",
+          "interruption_type": "diagonal_line",
+          "interruption_description": "Diagonal line crossing through text",
+          "should_delete": true,
+          "continuous_line_affected": true
+        },
+        {
+          "item_number": 3,
+          "item_text": "Contribute up to $360,000 as a non-concessional contribution using the 3 year carry forward rule.",
+          "interruption_type": "diagonal_line",
+          "interruption_description": "Diagonal line crossing through text",
+          "should_delete": true,
+          "continuous_line_affected": true
+        },
+        {
+          "item_number": 4,
+          "item_text": "Make a downsizer contribution of up to $300,000 each from sale of family home, as long as you have lived in it for more than 10 years. Contributions must be made within 90 days of receiving the proceeds of sale.",
+          "interruption_type": "diagonal_line",
+          "interruption_description": "Diagonal line crossing through text",
+          "should_delete": true,
+          "continuous_line_affected": true
+        }
+      ],
+      "total_items": 4,
+      "interrupted_count": 3,
+      "all_items_interrupted": false,
+      "continuous_line_detected": true,
+      "continuous_line_description": "Diagonal line starts at dot point 2, passes through dot points 3 and 4"
+    },
+    "row_deletion_rule": {
+      "left_box_completely_marked": false,
+      "right_box_completely_marked": false,
+      "delete_entire_row": false,
+      "deletion_reason": "Not all items in both boxes are marked for deletion"
+    },
+    "visual_description": "The left box contains handwritten notes around the main text. The right box has a diagonal line crossing through dot points 2, 3, and 4, indicating deletion, and handwritten notes after dot point 1."
+  }
+}

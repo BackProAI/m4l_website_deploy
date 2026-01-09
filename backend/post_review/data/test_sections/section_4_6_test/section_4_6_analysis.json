@@ -1,0 +1,19 @@
+{
+  "raw_analysis": "```json\n{\n    \"blank_box_analysis\": {\n        \"has_handwritten_content\": false,\n        \"content_type\": \"empty\",\n        \"handwritten_items\": [],\n        \"total_items_found\": 0,\n        \"box_appears_empty\": true,\n        \"additional_notes\": \"The box is completely empty with no visible handwritten text or marks.\"\n    },\n    \"processing_recommendations\": {\n        \"should_create_bullet_points\": false,\n        \"suggested_format\": \"none\",\n        \"estimated_items_to_create\": 0\n    },\n    \"visual_description\": \"The box is a large, empty rectangular area with no visible handwritten text, bullet points, or marks. It appears completely blank.\"\n}\n```",
+  "parsed_data": {
+    "blank_box_analysis": {
+      "has_handwritten_content": false,
+      "content_type": "empty",
+      "handwritten_items": [],
+      "total_items_found": 0,
+      "box_appears_empty": true,
+      "additional_notes": "The box is completely empty with no visible handwritten text or marks."
+    },
+    "processing_recommendations": {
+      "should_create_bullet_points": false,
+      "suggested_format": "none",
+      "estimated_items_to_create": 0
+    },
+    "visual_description": "The box is a large, empty rectangular area with no visible handwritten text, bullet points, or marks. It appears completely blank."
+  }
+}

@@ -43,21 +43,29 @@ export default function Sidebar() {
       }`}
     >
       {/* Logo Section */}
-      <div className="p-6 border-b border-[rgba(0,0,0,0.06)] dark:border-[rgba(255,255,255,0.06)] flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="h-10 w-10 bg-m4l-orange rounded-lg flex items-center justify-center text-white font-bold">
-            M4L
-          </div>
+      <div className={`p-6 border-b border-[rgba(0,0,0,0.06)] dark:border-[rgba(255,255,255,0.06)] flex items-center ${
+        isExpanded ? 'justify-between' : 'flex-col space-y-4'
+      }`}>
+        <div className={`flex items-center ${isExpanded ? 'space-x-4' : 'flex-col items-center'}`}>
+          <Image 
+            src="/more4life-logo.svg" 
+            alt="More4Life Logo" 
+            width={isExpanded ? 80 : 60} 
+            height={isExpanded ? 80 : 60}
+            className="flex-shrink-0"
+          />
           {isExpanded && (
             <div className="transition-opacity duration-200">
-              <h1 className="text-lg font-bold text-[var(--foreground)]">More4Life</h1>
-              <p className="text-xs text-[var(--muted)]">Automation Hub</p>
+              <h1 className="text-xl font-bold text-[var(--foreground)]">More4Life</h1>
+              <p className="text-sm text-[var(--muted)] font-medium">Automation Hub</p>
             </div>
           )}
         </div>
         <button
           onClick={toggleSidebar}
-          className="text-[var(--muted)] hover:text-[var(--foreground)] focus:outline-none"
+          className={`text-[var(--muted)] hover:text-[var(--foreground)] focus:outline-none ${
+            isExpanded ? '' : 'w-full flex justify-center'
+          }`}
         >
           <Menu className="h-6 w-6" />
         </button>
@@ -71,11 +79,12 @@ export default function Sidebar() {
             <a
               key={index}
               href={item.href}
-              className={`flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors ${
+              className={`flex items-center ${isExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg font-medium transition-colors ${
                 isActive
                   ? 'bg-orange-50 dark:bg-orange-900/30 text-m4l-orange dark:text-orange-400'
                   : 'text-[var(--foreground)] hover:bg-[var(--surface)] dark:hover:bg-[rgba(255,255,255,0.02)]'
               }`}
+              title={!isExpanded ? item.label : undefined}
             >
               <item.icon className="h-6 w-6 flex-shrink-0" />
               {isExpanded && (
@@ -96,7 +105,8 @@ export default function Sidebar() {
               <button
                 key={index}
                 onClick={item.action}
-                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-[var(--foreground)] hover:bg-[var(--surface)] dark:hover:bg-[rgba(255,255,255,0.02)] font-medium transition-colors"
+                className={`w-full flex items-center ${isExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg text-[var(--foreground)] hover:bg-[var(--surface)] dark:hover:bg-[rgba(255,255,255,0.02)] font-medium transition-colors`}
+                title={!isExpanded ? item.label : undefined}
               >
                 <item.icon className="h-6 w-6 flex-shrink-0" />
                 {isExpanded && (
@@ -111,11 +121,12 @@ export default function Sidebar() {
             <a
               key={index}
               href={item.href!}
-              className={`flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors ${
+              className={`flex items-center ${isExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg font-medium transition-colors ${
                 isActive
                   ? 'bg-orange-50 dark:bg-orange-900/30 text-m4l-orange dark:text-orange-400'
                     : 'text-[var(--foreground)] hover:bg-[var(--surface)] dark:hover:bg-[rgba(255,255,255,0.02)]'
               }`}
+              title={!isExpanded ? item.label : undefined}
             >
               <item.icon className="h-6 w-6 flex-shrink-0" />
               {isExpanded && (
@@ -128,7 +139,7 @@ export default function Sidebar() {
 
       {/* User Section */}
       <div className="p-4 border-t border-[rgba(0,0,0,0.06)] dark:border-[rgba(255,255,255,0.06)]">
-        <div className="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-[var(--surface)] dark:hover:bg-[rgba(255,255,255,0.02)] cursor-pointer">
+        <div className={`flex items-center ${isExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg hover:bg-[var(--surface)] dark:hover:bg-[rgba(255,255,255,0.02)] cursor-pointer`}>
           <div className="w-10 h-10 rounded-full bg-m4l-orange flex items-center justify-center text-white font-semibold flex-shrink-0">
             <User className="h-5 w-5" />
           </div>

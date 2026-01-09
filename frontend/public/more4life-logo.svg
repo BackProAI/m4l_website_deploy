@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 180">
+  <!-- Orange Circle with Arc -->
+  <g transform="translate(125, 45)">
+    <!-- Outer arc -->
+    <path d="M -35,0 A 35,35 0 1,1 35,0" fill="none" stroke="#E67E22" stroke-width="12" stroke-linecap="round"/>
+    <!-- Inner circle -->
+    <circle cx="0" cy="15" r="18" fill="#E67E22"/>
+  </g>
+  
+  <!-- Text: more4life -->
+  <text x="125" y="120" font-family="Arial, sans-serif" font-size="42" font-weight="bold" fill="#003D5C" text-anchor="middle">more4life</text>
+  
+  <!-- Text: FINANCIAL SERVICES -->
+  <text x="125" y="145" font-family="Arial, sans-serif" font-size="14" font-weight="normal" fill="#003D5C" text-anchor="middle" letter-spacing="2">FINANCIAL SERVICES</text>
+</svg>

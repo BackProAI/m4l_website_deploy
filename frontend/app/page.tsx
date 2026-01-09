@@ -45,6 +45,7 @@ export default function Home() {
             ]}
             buttonColor="bg-m4l-orange"
             buttonHoverColor="hover:bg-orange-600"
+            href="/post-review"
           />
 
           <ToolCard
@@ -52,7 +53,7 @@ export default function Home() {
             iconBg="bg-blue-100"
             iconColor="text-m4l-blue"
             title="A3 Form Processing"
-            description="Extract handwriting from A3 financial planning forms using advanced OCR technology and automatically populate PDF templates with recognized data."
+            description="Extract handwriting from A3 financial planning forms using advanced OCR technology and automatically populate PDF templates with recognised data."
             features={[
               'Sectioned OCR extraction',
               'M4L VL Model powered',
@@ -60,6 +61,7 @@ export default function Home() {
             ]}
             buttonColor="bg-m4l-blue"
             buttonHoverColor="hover:bg-blue-800"
+            href="/a3-automation"
           />
 
           <ToolCard
@@ -75,6 +77,7 @@ export default function Home() {
             ]}
             buttonColor="bg-green-600"
             buttonHoverColor="hover:bg-green-700"
+            href="/value-creator"
           />
         </div>
 

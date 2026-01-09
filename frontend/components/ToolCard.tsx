@@ -9,6 +9,7 @@ interface ToolCardProps {
   features: string[];
   buttonColor: string;
   buttonHoverColor: string;
+  href: string;
 }
 
 export default function ToolCard({
@@ -20,9 +21,10 @@ export default function ToolCard({
   features,
   buttonColor,
   buttonHoverColor,
+  href,
 }: ToolCardProps) {
   return (
-    <div className="bg-white rounded-xl shadow-sm p-8 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border-2 border-transparent hover:border-m4l-orange">
+    <div className="bg-white rounded-xl shadow-sm p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border-2 border-transparent hover:border-m4l-orange">
       <div className={`w-16 h-16 ${iconBg} rounded-lg flex items-center justify-center mb-6`}>
         <Icon className={`h-8 w-8 ${iconColor}`} />
       </div>
@@ -40,11 +42,12 @@ export default function ToolCard({
         ))}
       </div>
       
-      <button
-        className={`w-full ${buttonColor} ${buttonHoverColor} text-white font-semibold py-3 rounded-lg transition duration-200`}
+      <a
+        href={href}
+        className={`block w-full ${buttonColor} ${buttonHoverColor} text-white font-semibold py-3 rounded-lg transition duration-200 text-center`}
       >
         Launch Tool
-      </button>
+      </a>
     </div>
   );
 }
