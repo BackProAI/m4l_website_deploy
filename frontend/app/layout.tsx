@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import PasswordGate from "@/components/PasswordGate";
 import { Toaster } from 'react-hot-toast';
 
 export const metadata: Metadata = {
@@ -35,10 +36,12 @@ export default function RootLayout({
           } catch (e) { /* ignore */ }
         })()` }} />
         <ErrorBoundary>
-          <div className="flex h-screen overflow-hidden">
-            <Sidebar />
-            {children}
-          </div>
+          <PasswordGate>
+            <div className="flex h-screen overflow-hidden">
+              <Sidebar />
+              {children}
+            </div>
+          </PasswordGate>
         </ErrorBoundary>
         <Toaster position="top-right" />
       </body>
