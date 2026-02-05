@@ -55,7 +55,7 @@ const PdfJsViewer = forwardRef<PdfJsViewerHandle, PdfJsViewerProps>(function Pdf
           if (!name) continue;
           let value: any = (a as any).fieldValue ?? (a as any).defaultFieldValue ?? '';
           if (id && pdfDoc.annotationStorage) {
-            const stored = pdfDoc.annotationStorage.getRawValue(id);
+            const stored = pdfDoc.annotationStorage.getRawValue(id) as any;
             if (stored && stored.value !== undefined && stored.value !== null) {
               value = stored.value;
             }
