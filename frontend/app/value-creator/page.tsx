@@ -10,6 +10,7 @@ export default function ValueCreatorPage() {
   const [files, setFiles] = useState<{pdf: File | null, word: File | null}>({pdf: null, word: null});
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState(0);
+  const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,21 +96,7 @@ export default function ValueCreatorPage() {
       const API_BASE = process.env.NEXT_PUBLIC_A3_API || '';
       const processUrl = (API_BASE ? API_BASE : '') + '/api/value-creator/process';
 
-      // Processing steps for user feedback
-      const steps = [
-        'Uploading documents...',
-        'Parsing PDF and chunking document...',
-        'Analysing 10 chunks with M4L VL Model...',
-        'Detecting strikethroughs and changes...',
-        'Extracting amounts and dates...',
-        'Generating Word document...'
-      ];
-
-      // Update toast with upload status
-      setProcessingStep(0);
-      toast.loading(steps[0], { id: toastId });
-
-      // Make API call
+      // Make API call to start processing
       const response = await fetch(processUrl, {
         method: 'POST',
         body: formData,
@@ -127,45 +114,89 @@ export default function ValueCreatorPage() {
       }
 
       const data = await response.json();
+      const jobId = data.jobId;
       
-      // Simulate progress updates for better UX
-      for (let i = 1; i < steps.length; i++) {
-        setProcessingStep(i);
-        toast.loading(steps[i], { id: toastId });
-        await new Promise(resolve => setTimeout(resolve, 800));
+      if (!jobId) {
+        throw new Error('No job ID returned from server');
       }
 
-      // Extract results
-      const result = data.result || {};
-      const stages = result.stages || {};
-      const pdfAnalysis = stages.pdf_analysis || {};
-      const wordProcessing = stages.word_processing || {};
-      const changes = wordProcessing.changes || {};
-      const operationBreakdown = changes.operation_breakdown || {};
-      
-      // Check if processing was successful
-      if (result.status !== 'success') {
-        throw new Error(result.error || 'Processing failed');
-      }
+      // Start polling for results
+      toast.loading('Processing document...', { id: toastId });
+      setProcessingStep(1);
 
-      // Set results for display
-      const sections = wordProcessing.sections || {};
-      const strategyBreakdown = changes.strategy_breakdown || {};
-      const totalChanges = (strategyBreakdown.exact_matches || 0) + 
-                          (strategyBreakdown.similarity_matches || 0) + 
-                          (strategyBreakdown.keyword_matches || 0);
-      
-      setResults({
-        chunksProcessed: pdfAnalysis.chunks_processed || 0,
-        sectionsProcessed: sections.successful_sections || 0,
-        changesApplied: totalChanges,
-        finalDocument: result.output_file,
-        jobId: data.jobId,
-        processingTime: result.processing_time_seconds ? `${result.processing_time_seconds.toFixed(1)}s` : 'N/A',
-        outputFile: result.output_file ? result.output_file.split(/[/\\]/).pop() : 'value_creator_output.docx'
-      });
+      const statusUrl = (API_BASE ? API_BASE : '') + `/api/value-creator/status/${jobId}`;
+      let attempts = 0;
+      const maxAttempts = 180; // 6 minutes max (2 second intervals)
 
-      toast.success('Value Creator letter processed successfully!', { id: toastId });
+      const pollStatus = async (): Promise<void> => {
+        if (attempts >= maxAttempts) {
+          throw new Error('Processing timeout - please try again');
+        }
+
+        attempts++;
+        
+        try {
+          const statusResp = await fetch(statusUrl);
+          if (!statusResp.ok) {
+            const errorText = await statusResp.text().catch(() => 'Unknown error');
+            throw new Error(`Status check failed (${statusResp.status}): ${errorText}`);
+          }
+
+          const statusData = await statusResp.json();
+          
+          if (statusData.status === 'completed') {
+            // Extract results from completed processing
+            const result = statusData.result || {};
+            const stages = result.stages || {};
+            const pdfAnalysis = stages.pdf_analysis || {};
+            const wordProcessing = stages.word_processing || {};
+            const changes = wordProcessing.changes || {};
+            const operationBreakdown = changes.operation_breakdown || {};
+            
+            // Set results for display
+            const sections = wordProcessing.sections || {};
+            const strategyBreakdown = changes.strategy_breakdown || {};
+            const totalChanges = (strategyBreakdown.exact_matches || 0) + 
+                                (strategyBreakdown.similarity_matches || 0) + 
+                                (strategyBreakdown.keyword_matches || 0);
+            
+            setResults({
+              chunksProcessed: pdfAnalysis.chunks_processed || 0,
+              sectionsProcessed: sections.successful_sections || 0,
+              changesApplied: totalChanges,
+              finalDocument: result.output_file,
+              jobId: jobId,
+              processingTime: result.processing_time_seconds ? `${result.processing_time_seconds.toFixed(1)}s` : 'N/A',
+              outputFile: result.output_file ? result.output_file.split(/[/\\]/).pop() : 'value_creator_output.docx'
+            });
+
+            setProgress(100);
+            toast.success('Value Creator letter processed successfully!', { id: toastId });
+          } else if (statusData.status === 'failed') {
+            throw new Error(statusData.error || 'Processing failed');
+          } else {
+            // Still processing - update progress and poll again
+            const progressPercent = Math.min(95, (attempts / maxAttempts) * 100);
+            setProgress(progressPercent);
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+            await pollStatus(); // Recursive poll
+          }
+        } catch (fetchError) {
+          // Network error or parsing error
+          if (fetchError instanceof Error && fetchError.message.includes('fetch')) {
+            // Network error - retry
+            console.warn('Network error on status check, retrying...', fetchError);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            await pollStatus();
+          } else {
+            // Other error - rethrow
+            throw fetchError;
+          }
+        }
+      };
+
+      // Start polling
+      await pollStatus();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Processing failed. Please try again.';
       setError(errorMsg);
@@ -180,6 +211,7 @@ export default function ValueCreatorPage() {
     setResults(null);
     setError(null);
     setProcessingStep(0);
+    setProgress(0);
   };
 
   const handleDownload = () => {
