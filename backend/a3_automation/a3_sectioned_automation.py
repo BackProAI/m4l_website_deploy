@@ -9,12 +9,22 @@ import time
 import json
 import shutil
 from pathlib import Path
-from tkinter import *
-from tkinter import ttk, filedialog, messagebox
-from tkinterdnd2 import TkinterDnD, DND_FILES
 import queue
 import threading
 from typing import List, Dict, Any
+
+# Optional GUI imports - only needed for desktop application
+try:
+    from tkinter import *
+    from tkinter import ttk, filedialog, messagebox
+    from tkinterdnd2 import TkinterDnD, DND_FILES
+    TKINTER_AVAILABLE = True
+except ImportError:
+    TKINTER_AVAILABLE = False
+    # Define dummy classes for headless operation
+    class TkinterDnD:
+        class Tk:
+            pass
 
 # Import the sectioned OCR system
 from .sectioned_gpt4o_ocr import SectionedGPT4oOCR
@@ -317,6 +327,9 @@ class A3SectionedAutomationUI:
     """UI for sectioned A3 document automation."""
     
     def __init__(self):
+        if not TKINTER_AVAILABLE:
+            raise RuntimeError("GUI functionality requires tkinter and tkinterdnd2. Install with: pip install tkinterdnd2")
+        
         self.root = TkinterDnD.Tk()
         self.root.title("A3 Sectioned Automation - Manual Section Control")
         self.root.geometry("1000x750")
