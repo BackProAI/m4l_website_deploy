@@ -18,7 +18,8 @@ from pathlib import Path
 import os
 import shutil
 import uuid
-from typing import Optional
+from typing import Optional, Dict, Any
+import threading
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
@@ -56,6 +57,9 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Expose a safe downloads endpoint for frontend to fetch processed files
 app.mount("/downloads_static", StaticFiles(directory=str(OUTPUT_DIR)), name="downloads_static")
+
+# In-memory job storage (use Redis/DB in production)
+jobs: Dict[str, Dict[str, Any]] = {}
 
 # Try imports for existing processors
 try:
@@ -131,6 +135,35 @@ def _save_upload(upload: UploadFile, dest: Path) -> Path:
     return dest
 
 
+def _process_a3_background(job_id: str, save_path: Path, api_key: str):
+    """Background task to process A3 document"""
+    try:
+        jobs[job_id]["status"] = "processing"
+        processor = A3SectionedProcessor(api_key=api_key)
+        result = processor.process_file(save_path)
+
+        # Move processed file to outputs
+        if result and "output_pdf_path" in result and result["output_pdf_path"]:
+            output_path = Path(result["output_pdf_path"])
+            if output_path.exists():
+                output_filename = f"{job_id}_processed.pdf"
+                download_path = OUTPUT_DIR / output_filename
+                shutil.copy2(output_path, download_path)
+                
+                result["output_pdf_path"] = f"/view/{output_filename}"
+                result["downloadUrl"] = f"/downloads/{output_filename}"
+            else:
+                result["output_pdf_path"] = str(output_path)
+
+        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["result"] = result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
+
+
 @app.post("/api/a3/process")
 async def api_a3_process(file: UploadFile = File(...)):
     if A3SectionedProcessor is None:
@@ -143,38 +176,46 @@ async def api_a3_process(file: UploadFile = File(...)):
     save_path = UPLOAD_DIR / f"{upload_id}_{file.filename}"
     _save_upload(file, save_path)
 
-    try:
-        # Ensure API key - must be real for GPT-4o OCR
-        api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
-            raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured. Set it in environment or .env file.")
+    # Ensure API key
+    api_key = os.getenv('OPENAI_API_KEY')
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
 
-        processor = A3SectionedProcessor(api_key=api_key)
+    # Initialize job status
+    jobs[upload_id] = {
+        "status": "queued",
+        "filename": file.filename,
+        "result": None,
+        "error": None
+    }
 
-        # Call processing synchronously (may take long)
-        result = processor.process_file(save_path)
+    # Start background processing
+    thread = threading.Thread(target=_process_a3_background, args=(upload_id, save_path, api_key))
+    thread.daemon = True
+    thread.start()
 
-        # Convert Path objects to strings and move processed file to outputs for viewing
-        if result and "output_pdf_path" in result and result["output_pdf_path"]:
-            output_path = Path(result["output_pdf_path"])
-            if output_path.exists():
-                # Copy to outputs directory for serving
-                output_filename = f"{upload_id}_processed.pdf"
-                download_path = OUTPUT_DIR / output_filename
-                import shutil
-                shutil.copy2(output_path, download_path)
-                
-                # Return view URL for inline display and download URL for later
-                result["output_pdf_path"] = f"/view/{output_filename}"  # For modal viewing
-                result["downloadUrl"] = f"/downloads/{output_filename}"  # For downloading
-            else:
-                result["output_pdf_path"] = str(output_path)
+    return JSONResponse(content={"jobId": upload_id, "status": "processing"})
 
-        return JSONResponse(content={"jobId": upload_id, "result": result})
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+
+@app.get("/api/a3/status/{job_id}")
+async def api_a3_status(job_id: str):
+    """Check the status of an A3 processing job"""
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    job = jobs[job_id]
+    response = {
+        "jobId": job_id,
+        "status": job["status"],
+        "filename": job.get("filename")
+    }
+    
+    if job["status"] == "completed":
+        response["result"] = job["result"]
+    elif job["status"] == "failed":
+        response["error"] = job["error"]
+    
+    return JSONResponse(content=response)
 
 
 @app.post("/api/a3/flatten")
