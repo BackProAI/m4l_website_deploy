@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
-import { GlobalWorkerOptions, getDocument, type PDFDocumentProxy } from 'pdfjs-dist/build/pdf.mjs';
+import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist/build/pdf.mjs';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 // Minimal runtime viewer stack from PDF.js
 import { EventBus, PDFViewer, PDFLinkService } from 'pdfjs-dist/web/pdf_viewer.mjs';
 // Required viewer CSS for layout of pages/annotation layers
