@@ -61,6 +61,11 @@ app.mount("/downloads_static", StaticFiles(directory=str(OUTPUT_DIR)), name="dow
 # In-memory job storage (use Redis/DB in production)
 jobs: Dict[str, Dict[str, Any]] = {}
 
+@app.get("/")
+async def root():
+    """Health check endpoint"""
+    return {"status": "ok", "service": "M4L Processing API"}
+
 # Try imports for existing processors
 try:
     from ..a3_automation.a3_sectioned_automation import A3SectionedProcessor
