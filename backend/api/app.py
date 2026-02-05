@@ -285,8 +285,12 @@ async def get_history(days: int = 30):
     import json
     
     # Get the base URL for constructing download links
-    # In production, use the deployed backend URL
+    # Try environment variable first, fallback to common Render URL pattern
     base_url = os.getenv("BACKEND_URL", "")
+    if not base_url:
+        # If running on Render, construct the URL
+        render_service = os.getenv("RENDER_SERVICE_NAME", "m4l-backend")
+        base_url = f"https://{render_service}.onrender.com"
     
     cutoff_time = datetime.now() - timedelta(days=days)
     history_items = []
