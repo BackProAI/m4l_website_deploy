@@ -211,8 +211,6 @@ export default function PostReviewPage() {
     setProcessingStep(0);
     setProgress(0);
   };
-    setProcessingStep(0);
-  };
 
   const handleDownload = () => {
     if (!results?.finalDocument || !results?.jobId) {
