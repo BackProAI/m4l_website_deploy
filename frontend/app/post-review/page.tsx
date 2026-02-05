@@ -149,12 +149,7 @@ export default function PostReviewPage() {
             const result = statusData.result || {};
             const summary = result.processing_summary || {};
             
-            // Check if processing was successful
-            if (!result.success) {
-              throw new Error(result.errors?.[0] || 'Processing failed');
-            }
-
-            // Set results for display
+            // Set results for display (show results even if some sections failed)
             setResults({
               sectionsProcessed: summary.total_sections || 0,
               changesDetected: summary.total_changes_applied || 0,
@@ -166,7 +161,15 @@ export default function PostReviewPage() {
             });
 
             setProgress(100);
-            toast.success('Documents processed successfully!', { id: toastId });
+            
+            // Show success or warning based on result
+            if (result.success) {
+              toast.success('Documents processed successfully!', { id: toastId });
+            } else {
+              const errorMsg = result.errors?.[0] || 'Processing completed with errors';
+              toast.error(errorMsg, { id: toastId });
+              setError(errorMsg);
+            }
           } else if (statusData.status === 'failed') {
             throw new Error(statusData.error || 'Processing failed');
           } else {
