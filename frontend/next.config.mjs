@@ -8,11 +8,11 @@ const nextConfig = {
 		return [
 			{
 				source: '/api/:path*',
-				destination: 'http://127.0.0.1:8002/api/:path*',
+				destination: 'https://m4l-backend.onrender.com/api/:path*',
 			},
 			{
 				source: '/downloads/:path*',
-				destination: 'http://127.0.0.1:8002/downloads/:path*',
+				destination: 'https://m4l-backend.onrender.com/downloads/:path*',
 			},
 		];
 	},
