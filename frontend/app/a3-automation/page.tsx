@@ -99,30 +99,47 @@ export default function A3AutomationPage() {
         }
 
         attempts++;
-        const statusResp = await fetch(statusUrl);
-        if (!statusResp.ok) throw new Error('Failed to check status');
-
-        const statusData = await statusResp.json();
         
-        if (statusData.status === 'completed') {
-          const outputPath = statusData?.result?.output_pdf_path || statusData?.result?.output_pdf || null;
-          if (!outputPath) throw new Error('Processing did not return processed PDF');
+        try {
+          const statusResp = await fetch(statusUrl);
+          if (!statusResp.ok) {
+            const errorText = await statusResp.text().catch(() => 'Unknown error');
+            throw new Error(`Status check failed (${statusResp.status}): ${errorText}`);
+          }
 
-          let pdfUrl = outputPath;
-          if (API_BASE && pdfUrl.startsWith('/')) pdfUrl = API_BASE.replace(/\/$/, '') + pdfUrl;
+          const statusData = await statusResp.json();
+          
+          if (statusData.status === 'completed') {
+            const outputPath = statusData?.result?.output_pdf_path || statusData?.result?.output_pdf || null;
+            if (!outputPath) throw new Error('Processing did not return processed PDF');
 
-          setProcessedPdfUrl(pdfUrl);
-          setShowPdfModal(true);
-          setProgress(100);
-          toast.success('A3 form processed successfully!', { id: toastId });
-        } else if (statusData.status === 'failed') {
-          throw new Error(statusData.error || 'Processing failed');
-        } else {
-          // Still processing - update progress and poll again
-          const progressPercent = Math.min(95, (attempts / maxAttempts) * 100);
-          setProgress(progressPercent);
-          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-          await pollStatus(); // Recursive poll
+            let pdfUrl = outputPath;
+            if (API_BASE && pdfUrl.startsWith('/')) pdfUrl = API_BASE.replace(/\/$/, '') + pdfUrl;
+
+            setProcessedPdfUrl(pdfUrl);
+            setShowPdfModal(true);
+            setProgress(100);
+            toast.success('A3 form processed successfully!', { id: toastId });
+          } else if (statusData.status === 'failed') {
+            throw new Error(statusData.error || 'Processing failed');
+          } else {
+            // Still processing - update progress and poll again
+            const progressPercent = Math.min(95, (attempts / maxAttempts) * 100);
+            setProgress(progressPercent);
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+            await pollStatus(); // Recursive poll
+          }
+        } catch (fetchError) {
+          // Network error or parsing error
+          if (fetchError instanceof Error && fetchError.message.includes('fetch')) {
+            // Network error - retry
+            console.warn('Network error on status check, retrying...', fetchError);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            await pollStatus();
+          } else {
+            // Other error - rethrow
+            throw fetchError;
+          }
         }
       };
 
