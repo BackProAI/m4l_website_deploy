@@ -542,6 +542,25 @@ async def api_post_review_process(pdf: UploadFile = File(...), docx: UploadFile 
     return JSONResponse(content={"jobId": upload_id, "result": result})
 
 
+def _process_value_creator_background(job_id: str, pdf_path: Path, docx_path: Path, output_path: Path):
+    """Background task to process Value Creator document"""
+    try:
+        jobs[job_id]["status"] = "processing"
+        orchestrator = ProductionOrchestrator()
+        result = orchestrator.process_value_creator_document(
+            pdf_path=str(pdf_path), 
+            word_template_path=str(docx_path),
+            output_path=str(output_path)
+        )
+        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["result"] = result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
+
+
 @app.post("/api/value-creator/process")
 async def api_value_creator_process(pdf: UploadFile = File(...), docx: UploadFile = File(...)):
     if ProductionOrchestrator is None:
@@ -558,15 +577,40 @@ async def api_value_creator_process(pdf: UploadFile = File(...), docx: UploadFil
     # Ensure output directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Instantiate orchestrator and run processing
-    orchestrator = ProductionOrchestrator()
-    try:
-        result = orchestrator.process_value_creator_document(
-            pdf_path=str(pdf_path), 
-            word_template_path=str(docx_path),
-            output_path=str(output_path)
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Value Creator processing failed: {e}")
+    # Initialize job status
+    jobs[upload_id] = {
+        "status": "queued",
+        "pdf_filename": pdf.filename,
+        "docx_filename": docx.filename,
+        "result": None,
+        "error": None
+    }
 
-    return JSONResponse(content={"jobId": upload_id, "result": result})
+    # Start background processing
+    thread = threading.Thread(target=_process_value_creator_background, args=(upload_id, pdf_path, docx_path, output_path))
+    thread.daemon = True
+    thread.start()
+
+    return JSONResponse(content={"jobId": upload_id, "status": "processing"})
+
+
+@app.get("/api/value-creator/status/{job_id}")
+async def api_value_creator_status(job_id: str):
+    """Check the status of a Value Creator processing job"""
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    job = jobs[job_id]
+    response = {
+        "jobId": job_id,
+        "status": job["status"],
+        "pdf_filename": job.get("pdf_filename"),
+        "docx_filename": job.get("docx_filename")
+    }
+    
+    if job["status"] == "completed":
+        response["result"] = job["result"]
+    elif job["status"] == "failed":
+        response["error"] = job["error"]
+    
+    return JSONResponse(content=response)
