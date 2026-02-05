@@ -10,6 +10,7 @@ export default function PostReviewPage() {
   const [files, setFiles] = useState<{pdf: File | null, word: File | null}>({pdf: null, word: null});
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState(0);
+  const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,20 +96,7 @@ export default function PostReviewPage() {
       const API_BASE = process.env.NEXT_PUBLIC_A3_API || '';
       const processUrl = (API_BASE ? API_BASE : '') + '/api/post-review/process';
 
-      // Processing steps for user feedback
-      const steps = [
-        'Uploading documents...',
-        'Extracting PDF sections...',
-        'Running OCR on annotations...',
-        'Analysing changes...',
-        'Applying modifications to Word document...'
-      ];
-
-      // Update toast with upload status
-      setProcessingStep(0);
-      toast.loading(steps[0], { id: toastId });
-
-      // Make API call
+      // Make API call to start processing
       const response = await fetch(processUrl, {
         method: 'POST',
         body: formData,
@@ -126,35 +114,84 @@ export default function PostReviewPage() {
       }
 
       const data = await response.json();
+      const jobId = data.jobId;
       
-      // Simulate progress updates for better UX
-      for (let i = 1; i < steps.length; i++) {
-        setProcessingStep(i);
-        toast.loading(steps[i], { id: toastId });
-        await new Promise(resolve => setTimeout(resolve, 800));
+      if (!jobId) {
+        throw new Error('No job ID returned from server');
       }
 
-      // Extract results
-      const result = data.result || {};
-      const summary = result.processing_summary || {};
-      
-      // Check if processing was successful
-      if (!result.success) {
-        throw new Error(result.errors?.[0] || 'Processing failed');
-      }
+      // Start polling for results
+      toast.loading('Processing document...', { id: toastId });
+      setProcessingStep(1);
 
-      // Set results for display
-      setResults({
-        sectionsProcessed: summary.total_sections || 0,
-        changesDetected: summary.total_changes_applied || 0,
-        modificationsApplied: summary.successful_sections || 0,
-        finalDocument: result.final_document,
-        jobId: data.jobId,
-        processingTime: `${summary.total_sections || 0} sections`,
-        outputFile: result.final_document ? result.final_document.split(/[/\\]/).pop() : 'updated_document.docx'
-      });
+      const statusUrl = (API_BASE ? API_BASE : '') + `/api/post-review/status/${jobId}`;
+      let attempts = 0;
+      const maxAttempts = 180; // 6 minutes max (2 second intervals)
 
-      toast.success('Documents processed successfully!', { id: toastId });
+      const pollStatus = async (): Promise<void> => {
+        if (attempts >= maxAttempts) {
+          throw new Error('Processing timeout - please try again');
+        }
+
+        attempts++;
+        
+        try {
+          const statusResp = await fetch(statusUrl);
+          if (!statusResp.ok) {
+            const errorText = await statusResp.text().catch(() => 'Unknown error');
+            throw new Error(`Status check failed (${statusResp.status}): ${errorText}`);
+          }
+
+          const statusData = await statusResp.json();
+          
+          if (statusData.status === 'completed') {
+            // Extract results from completed processing
+            const result = statusData.result || {};
+            const summary = result.processing_summary || {};
+            
+            // Check if processing was successful
+            if (!result.success) {
+              throw new Error(result.errors?.[0] || 'Processing failed');
+            }
+
+            // Set results for display
+            setResults({
+              sectionsProcessed: summary.total_sections || 0,
+              changesDetected: summary.total_changes_applied || 0,
+              modificationsApplied: summary.successful_sections || 0,
+              finalDocument: result.final_document,
+              jobId: jobId,
+              processingTime: `${summary.total_sections || 0} sections`,
+              outputFile: result.final_document ? result.final_document.split(/[/\\]/).pop() : 'updated_document.docx'
+            });
+
+            setProgress(100);
+            toast.success('Documents processed successfully!', { id: toastId });
+          } else if (statusData.status === 'failed') {
+            throw new Error(statusData.error || 'Processing failed');
+          } else {
+            // Still processing - update progress and poll again
+            const progressPercent = Math.min(95, (attempts / maxAttempts) * 100);
+            setProgress(progressPercent);
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+            await pollStatus(); // Recursive poll
+          }
+        } catch (fetchError) {
+          // Network error or parsing error
+          if (fetchError instanceof Error && fetchError.message.includes('fetch')) {
+            // Network error - retry
+            console.warn('Network error on status check, retrying...', fetchError);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            await pollStatus();
+          } else {
+            // Other error - rethrow
+            throw fetchError;
+          }
+        }
+      };
+
+      // Start polling
+      await pollStatus();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Processing failed. Please try again.';
       setError(errorMsg);
@@ -168,6 +205,9 @@ export default function PostReviewPage() {
     setFiles({pdf: null, word: null});
     setResults(null);
     setError(null);
+    setProcessingStep(0);
+    setProgress(0);
+  };
     setProcessingStep(0);
   };
 

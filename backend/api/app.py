@@ -520,6 +520,20 @@ async def view_file(filename: str):
     )
 
 
+def _process_post_review_background(job_id: str, pdf_path: Path, docx_path: Path, output_dir: Path):
+    """Background task to process Post Review document"""
+    try:
+        jobs[job_id]["status"] = "processing"
+        result = process_post_review_documents(str(pdf_path), str(docx_path), output_dir=str(output_dir))
+        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["result"] = result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
+
+
 @app.post("/api/post-review/process")
 async def api_post_review_process(pdf: UploadFile = File(...), docx: UploadFile = File(...)):
     if process_post_review_documents is None:
@@ -533,13 +547,51 @@ async def api_post_review_process(pdf: UploadFile = File(...), docx: UploadFile 
     upload_id = str(uuid.uuid4())
     pdf_path = UPLOAD_DIR / f"{upload_id}_{pdf.filename}"
     docx_path = UPLOAD_DIR / f"{upload_id}_{docx.filename}"
+    output_dir = OUTPUT_DIR / upload_id
+    
     _save_upload(pdf, pdf_path)
     _save_upload(docx, docx_path)
 
-    # Call processor synchronously
-    result = process_post_review_documents(str(pdf_path), str(docx_path), output_dir=str(OUTPUT_DIR / upload_id))
+    # Ensure output directory exists
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    return JSONResponse(content={"jobId": upload_id, "result": result})
+    # Initialize job status
+    jobs[upload_id] = {
+        "status": "queued",
+        "pdf_filename": pdf.filename,
+        "docx_filename": docx.filename,
+        "result": None,
+        "error": None
+    }
+
+    # Start background processing
+    thread = threading.Thread(target=_process_post_review_background, args=(upload_id, pdf_path, docx_path, output_dir))
+    thread.daemon = True
+    thread.start()
+
+    return JSONResponse(content={"jobId": upload_id, "status": "processing"})
+
+
+@app.get("/api/post-review/status/{job_id}")
+async def api_post_review_status(job_id: str):
+    """Check the status of a Post Review processing job"""
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    job = jobs[job_id]
+    response = {
+        "jobId": job_id,
+        "status": job["status"],
+        "pdf_filename": job.get("pdf_filename"),
+        "docx_filename": job.get("docx_filename")
+    }
+    
+    if job["status"] == "completed":
+        response["result"] = job["result"]
+    elif job["status"] == "failed":
+        response["error"] = job["error"]
+    
+    return JSONResponse(content=response)
 
 
 def _process_value_creator_background(job_id: str, pdf_path: Path, docx_path: Path, output_path: Path):
