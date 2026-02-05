@@ -14,6 +14,10 @@ const nextConfig = {
 				source: '/downloads/:path*',
 				destination: 'https://m4l-backend.onrender.com/downloads/:path*',
 			},
+			{
+				source: '/view/:path*',
+				destination: 'https://m4l-backend.onrender.com/view/:path*',
+			},
 		];
 	},
 };
