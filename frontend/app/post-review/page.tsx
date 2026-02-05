@@ -137,7 +137,17 @@ export default function PostReviewPage() {
         
         try {
           const statusResp = await fetch(statusUrl);
+          
+          // Handle server overload errors (502, 503, 504) - backend is processing, just retry
           if (!statusResp.ok) {
+            if (statusResp.status === 502 || statusResp.status === 503 || statusResp.status === 504) {
+              // Backend is overloaded during heavy processing - this is expected, just retry
+              console.warn(`Backend busy (${statusResp.status}), retrying status check...`);
+              await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds before retry
+              await pollStatus();
+              return;
+            }
+            // For other errors, throw
             const errorText = await statusResp.text().catch(() => 'Unknown error');
             throw new Error(`Status check failed (${statusResp.status}): ${errorText}`);
           }
