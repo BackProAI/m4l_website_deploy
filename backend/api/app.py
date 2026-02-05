@@ -284,6 +284,10 @@ async def get_history(days: int = 30):
     from datetime import datetime, timedelta
     import json
     
+    # Get the base URL for constructing download links
+    # In production, use the deployed backend URL
+    base_url = os.getenv("BACKEND_URL", "")
+    
     cutoff_time = datetime.now() - timedelta(days=days)
     history_items = []
     
@@ -326,7 +330,7 @@ async def get_history(days: int = 30):
                             "fileName": original_name,
                             "status": "completed",
                             "timestamp": mtime.isoformat(),
-                            "downloadUrl": f"/api/downloads/{job_id}/{output_file}"
+                            "downloadUrl": f"{base_url}/downloads/{job_id}/{output_file}"
                         })
                     
                     # Check for post-review
@@ -353,7 +357,7 @@ async def get_history(days: int = 30):
                                 "fileName": original_name,
                                 "status": "completed",
                                 "timestamp": mtime.isoformat(),
-                                "downloadUrl": f"/api/downloads/{job_id}/{output_file}"
+                                "downloadUrl": f"{base_url}/downloads/{job_id}/{output_file}"
                             })
                 
                 elif item.is_file():
@@ -368,7 +372,7 @@ async def get_history(days: int = 30):
                             "fileName": item.name,
                             "status": "completed",
                             "timestamp": mtime.isoformat(),
-                            "downloadUrl": f"/api/downloads/{item.name}"
+                            "downloadUrl": f"{base_url}/downloads/{item.name}"
                         })
             
             except Exception as e:
@@ -448,7 +452,7 @@ async def logout():
                             "fileName": original_name,
                             "status": "completed",
                             "timestamp": mtime.isoformat(),
-                            "downloadUrl": f"/api/downloads/{job_id}/{output_file}"
+                            "downloadUrl": f"{base_url}/downloads/{job_id}/{output_file}"
                         })
                     
                     # Check for post-review
@@ -475,7 +479,7 @@ async def logout():
                                 "fileName": original_name,
                                 "status": "completed",
                                 "timestamp": mtime.isoformat(),
-                                "downloadUrl": f"/api/downloads/{job_id}/{output_file}"
+                                "downloadUrl": f"{base_url}/downloads/{job_id}/{output_file}"
                             })
                 
                 elif item.is_file():
@@ -490,7 +494,7 @@ async def logout():
                             "fileName": item.name,
                             "status": "completed",
                             "timestamp": mtime.isoformat(),
-                            "downloadUrl": f"/api/downloads/{item.name}"
+                            "downloadUrl": f"{base_url}/downloads/{item.name}"
                         })
             
             except Exception as e:
