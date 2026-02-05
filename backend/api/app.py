@@ -52,13 +52,45 @@ LOGIN_PASSWORD = "more4life123"
 ROOT = Path(__file__).resolve().parents[2]
 UPLOAD_DIR = ROOT / "backend_storage" / "uploads"
 OUTPUT_DIR = ROOT / "backend_storage" / "outputs"
+JOBS_DIR = ROOT / "backend_storage" / "jobs"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Expose a safe downloads endpoint for frontend to fetch processed files
 app.mount("/downloads_static", StaticFiles(directory=str(OUTPUT_DIR)), name="downloads_static")
 
-# In-memory job storage (use Redis/DB in production)
+# Job persistence functions (survives backend restarts)
+import json
+
+def _save_job_status(job_id: str, status_data: Dict[str, Any]):
+    """Save job to disk so it survives restarts"""
+    try:
+        job_file = JOBS_DIR / f"{job_id}.json"
+        # Convert Path objects to strings for JSON serialization
+        serializable_data = {}
+        for k, v in status_data.items():
+            if isinstance(v, Path):
+                serializable_data[k] = str(v)
+            else:
+                serializable_data[k] = v
+        with open(job_file, 'w') as f:
+            json.dump(serializable_data, f, indent=2, default=str)
+    except Exception as e:
+        print(f"Warning: Failed to save job {job_id}: {e}")
+
+def _load_job_status(job_id: str) -> Optional[Dict[str, Any]]:
+    """Load job from disk"""
+    try:
+        job_file = JOBS_DIR / f"{job_id}.json"
+        if job_file.exists():
+            with open(job_file, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Warning: Failed to load job {job_id}: {e}")
+    return None
+
+# In-memory cache + disk persistence
 jobs: Dict[str, Dict[str, Any]] = {}
 
 @app.get("/")
@@ -143,7 +175,9 @@ def _save_upload(upload: UploadFile, dest: Path) -> Path:
 def _process_a3_background(job_id: str, save_path: Path, api_key: str):
     """Background task to process A3 document"""
     try:
-        jobs[job_id]["status"] = "processing"
+        jobs[job_id]["status"] = "processing";_save_job_status(job_id, jobs[job_id])
+        _save_job_status(job_id, jobs[job_id])  # Persist to disk
+        
         processor = A3SectionedProcessor(api_key=api_key)
         result = processor.process_file(save_path)
 
@@ -160,13 +194,15 @@ def _process_a3_background(job_id: str, save_path: Path, api_key: str):
             else:
                 result["output_pdf_path"] = str(output_path)
 
-        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["status"] = "completed";_save_job_status(job_id, jobs[job_id])
         jobs[job_id]["result"] = result
+        _save_job_status(job_id, jobs[job_id])  # Persist to disk
     except Exception as e:
         import traceback
         traceback.print_exc()
-        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["status"] = "failed";_save_job_status(job_id, jobs[job_id])
         jobs[job_id]["error"] = str(e)
+        _save_job_status(job_id, jobs[job_id])  # Persist to disk
 
 
 @app.post("/api/a3/process")
@@ -186,13 +222,14 @@ async def api_a3_process(file: UploadFile = File(...)):
     if not api_key:
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
 
-    # Initialize job status
+    # Initialize job status (persist to disk so it survives restarts)
     jobs[upload_id] = {
         "status": "queued",
         "filename": file.filename,
         "result": None,
         "error": None
     }
+    _save_job_status(upload_id, jobs[upload_id])
 
     # Start background processing
     thread = threading.Thread(target=_process_a3_background, args=(upload_id, save_path, api_key))
@@ -204,11 +241,16 @@ async def api_a3_process(file: UploadFile = File(...)):
 
 @app.get("/api/a3/status/{job_id}")
 async def api_a3_status(job_id: str):
-    """Check the status of an A3 processing job"""
+    """Check the status of an A3 processing job (loads from disk if backend restarted)"""
     if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
+        # Try loading from disk (survives backend restarts)
+        job = _load_job_status(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        jobs[job_id] = job  # Cache in memory
+    else:
+        job = jobs[job_id]
     
-    job = jobs[job_id]
     response = {
         "jobId": job_id,
         "status": job["status"],
@@ -531,14 +573,14 @@ async def view_file(filename: str):
 def _process_post_review_background(job_id: str, pdf_path: Path, docx_path: Path, output_dir: Path):
     """Background task to process Post Review document"""
     try:
-        jobs[job_id]["status"] = "processing"
+        jobs[job_id]["status"] = "processing";_save_job_status(job_id, jobs[job_id])
         result = process_post_review_documents(str(pdf_path), str(docx_path), output_dir=str(output_dir))
-        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["status"] = "completed";_save_job_status(job_id, jobs[job_id])
         jobs[job_id]["result"] = result
     except Exception as e:
         import traceback
         traceback.print_exc()
-        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["status"] = "failed";_save_job_status(job_id, jobs[job_id])
         jobs[job_id]["error"] = str(e)
 
 
@@ -605,19 +647,19 @@ async def api_post_review_status(job_id: str):
 def _process_value_creator_background(job_id: str, pdf_path: Path, docx_path: Path, output_path: Path):
     """Background task to process Value Creator document"""
     try:
-        jobs[job_id]["status"] = "processing"
+        jobs[job_id]["status"] = "processing";_save_job_status(job_id, jobs[job_id])
         orchestrator = ProductionOrchestrator()
         result = orchestrator.process_value_creator_document(
             pdf_path=str(pdf_path), 
             word_template_path=str(docx_path),
             output_path=str(output_path)
         )
-        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["status"] = "completed";_save_job_status(job_id, jobs[job_id])
         jobs[job_id]["result"] = result
     except Exception as e:
         import traceback
         traceback.print_exc()
-        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["status"] = "failed";_save_job_status(job_id, jobs[job_id])
         jobs[job_id]["error"] = str(e)
 
 
