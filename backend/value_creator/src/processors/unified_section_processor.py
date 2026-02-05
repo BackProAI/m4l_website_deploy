@@ -290,6 +290,7 @@ class UnifiedSectionProcessor:
                 
                 try:
                     changes = self._apply_section_changes(doc, section_name, analysis)
+                    self.changes_applied.extend(changes)  # Track all changes
                     self.processing_stats['sections_processed'] += 1
                     self.logger.info(f"✅ {section_name}: {len(changes)} changes applied")
                     
@@ -309,9 +310,11 @@ class UnifiedSectionProcessor:
             self.logger.info(f"💾 Final document saved: {output_path}")
             
             # Calculate final statistics
-            total_changes = (self.processing_stats['exact_matches'] + 
-                           self.processing_stats['similarity_matches'] + 
-                           self.processing_stats['keyword_matches'])
+            # Use actual changes count instead of just strategy-based counters
+            total_changes = len(self.changes_applied)
+            strategy_based_changes = (self.processing_stats['exact_matches'] + 
+                                     self.processing_stats['similarity_matches'] + 
+                                     self.processing_stats['keyword_matches'])
             
             success_rate = (self.processing_stats['sections_processed'] / 
                           len(section_analyses)) if section_analyses else 0
