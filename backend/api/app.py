@@ -573,15 +573,18 @@ async def view_file(filename: str):
 def _process_post_review_background(job_id: str, pdf_path: Path, docx_path: Path, output_dir: Path):
     """Background task to process Post Review document"""
     try:
-        jobs[job_id]["status"] = "processing";_save_job_status(job_id, jobs[job_id])
+        jobs[job_id]["status"] = "processing"
+        _save_job_status(job_id, jobs[job_id])
         result = process_post_review_documents(str(pdf_path), str(docx_path), output_dir=str(output_dir))
-        jobs[job_id]["status"] = "completed";_save_job_status(job_id, jobs[job_id])
+        jobs[job_id]["status"] = "completed"
         jobs[job_id]["result"] = result
+        _save_job_status(job_id, jobs[job_id])
     except Exception as e:
         import traceback
         traceback.print_exc()
-        jobs[job_id]["status"] = "failed";_save_job_status(job_id, jobs[job_id])
+        jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
+        _save_job_status(job_id, jobs[job_id])
 
 
 @app.post("/api/post-review/process")
@@ -613,6 +616,7 @@ async def api_post_review_process(pdf: UploadFile = File(...), docx: UploadFile 
         "result": None,
         "error": None
     }
+    _save_job_status(upload_id, jobs[upload_id])
 
     # Start background processing
     thread = threading.Thread(target=_process_post_review_background, args=(upload_id, pdf_path, docx_path, output_dir))
@@ -624,11 +628,14 @@ async def api_post_review_process(pdf: UploadFile = File(...), docx: UploadFile 
 
 @app.get("/api/post-review/status/{job_id}")
 async def api_post_review_status(job_id: str):
-    """Check the status of a Post Review processing job"""
+    """Check the status of a Post Review processing job (loads from disk if backend restarted)"""
     if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    job = jobs[job_id]
+        job = _load_job_status(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        jobs[job_id] = job
+    else:
+        job = jobs[job_id]
     response = {
         "jobId": job_id,
         "status": job["status"],
@@ -647,20 +654,23 @@ async def api_post_review_status(job_id: str):
 def _process_value_creator_background(job_id: str, pdf_path: Path, docx_path: Path, output_path: Path):
     """Background task to process Value Creator document"""
     try:
-        jobs[job_id]["status"] = "processing";_save_job_status(job_id, jobs[job_id])
+        jobs[job_id]["status"] = "processing"
+        _save_job_status(job_id, jobs[job_id])
         orchestrator = ProductionOrchestrator()
         result = orchestrator.process_value_creator_document(
             pdf_path=str(pdf_path), 
             word_template_path=str(docx_path),
             output_path=str(output_path)
         )
-        jobs[job_id]["status"] = "completed";_save_job_status(job_id, jobs[job_id])
+        jobs[job_id]["status"] = "completed"
         jobs[job_id]["result"] = result
+        _save_job_status(job_id, jobs[job_id])
     except Exception as e:
         import traceback
         traceback.print_exc()
-        jobs[job_id]["status"] = "failed";_save_job_status(job_id, jobs[job_id])
+        jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
+        _save_job_status(job_id, jobs[job_id])
 
 
 @app.post("/api/value-creator/process")
@@ -687,6 +697,7 @@ async def api_value_creator_process(pdf: UploadFile = File(...), docx: UploadFil
         "result": None,
         "error": None
     }
+    _save_job_status(upload_id, jobs[upload_id])
 
     # Start background processing
     thread = threading.Thread(target=_process_value_creator_background, args=(upload_id, pdf_path, docx_path, output_path))
@@ -698,11 +709,15 @@ async def api_value_creator_process(pdf: UploadFile = File(...), docx: UploadFil
 
 @app.get("/api/value-creator/status/{job_id}")
 async def api_value_creator_status(job_id: str):
-    """Check the status of a Value Creator processing job"""
+    """Check the status of a Post Review processing job (loads from disk if backend restarted)"""
     if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
+        job = _load_job_status(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        jobs[job_id] = job
+    else:
+        job = jobs[job_id]
     
-    job = jobs[job_id]
     response = {
         "jobId": job_id,
         "status": job["status"],
