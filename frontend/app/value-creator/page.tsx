@@ -155,10 +155,7 @@ export default function ValueCreatorPage() {
             
             // Set results for display
             const sections = wordProcessing.sections || {};
-            const strategyBreakdown = changes.strategy_breakdown || {};
-            const totalChanges = (strategyBreakdown.exact_matches || 0) + 
-                                (strategyBreakdown.similarity_matches || 0) + 
-                                (strategyBreakdown.keyword_matches || 0);
+            const totalChanges = changes.total_changes_applied || 0;
             
             setResults({
               chunksProcessed: pdfAnalysis.chunks_processed || 0,
