@@ -3,6 +3,7 @@ import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import PasswordGate from "@/components/PasswordGate";
+import BackendWarmup from "@/components/BackendWarmup";
 import { Toaster } from 'react-hot-toast';
 
 export const metadata: Metadata = {
@@ -37,6 +38,7 @@ export default function RootLayout({
         })()` }} />
         <ErrorBoundary>
           <PasswordGate>
+            <BackendWarmup />
             <div className="flex h-screen overflow-hidden">
               <Sidebar />
               {children}
