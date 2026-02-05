@@ -67,13 +67,13 @@ export default function A3AutomationPage() {
     const toastId = toast.loading('Processing A3 form...');
 
     try {
-      // Call backend /api/a3/process
       const API_BASE = process.env.NEXT_PUBLIC_A3_API || '';
       const processUrl = (API_BASE ? API_BASE : '') + '/api/a3/process';
 
       const form = new FormData();
       form.append('file', uploadedFile);
 
+      // Start processing - returns immediately with job ID
       const resp = await fetch(processUrl, {
         method: 'POST',
         body: form,
@@ -85,20 +85,48 @@ export default function A3AutomationPage() {
         throw new Error(msg);
       }
 
-      const data = await resp.json();
-      // Backend returns result with output path in result.output_pdf_path
-      const outputPath = data?.result?.output_pdf_path || data?.result?.output_pdf || null;
-      if (!outputPath) throw new Error('Processing did not return processed PDF');
+      const { jobId } = await resp.json();
+      if (!jobId) throw new Error('No job ID returned');
 
-      // If relative path, qualify with API_BASE
-      let pdfUrl = outputPath;
-      if (API_BASE && pdfUrl.startsWith('/')) pdfUrl = API_BASE.replace(/\/$/, '') + pdfUrl;
+      // Poll for status
+      const statusUrl = (API_BASE ? API_BASE : '') + `/api/a3/status/${jobId}`;
+      let attempts = 0;
+      const maxAttempts = 120; // 4 minutes max (2 second intervals)
 
-      setProcessedPdfUrl(pdfUrl);
-      setShowPdfModal(true);
-      setProgress(100);
+      const pollStatus = async (): Promise<void> => {
+        if (attempts >= maxAttempts) {
+          throw new Error('Processing timeout - please try again');
+        }
 
-      toast.success('A3 form processed successfully!', { id: toastId });
+        attempts++;
+        const statusResp = await fetch(statusUrl);
+        if (!statusResp.ok) throw new Error('Failed to check status');
+
+        const statusData = await statusResp.json();
+        
+        if (statusData.status === 'completed') {
+          const outputPath = statusData?.result?.output_pdf_path || statusData?.result?.output_pdf || null;
+          if (!outputPath) throw new Error('Processing did not return processed PDF');
+
+          let pdfUrl = outputPath;
+          if (API_BASE && pdfUrl.startsWith('/')) pdfUrl = API_BASE.replace(/\/$/, '') + pdfUrl;
+
+          setProcessedPdfUrl(pdfUrl);
+          setShowPdfModal(true);
+          setProgress(100);
+          toast.success('A3 form processed successfully!', { id: toastId });
+        } else if (statusData.status === 'failed') {
+          throw new Error(statusData.error || 'Processing failed');
+        } else {
+          // Still processing - update progress and poll again
+          const progressPercent = Math.min(95, (attempts / maxAttempts) * 100);
+          setProgress(progressPercent);
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+          await pollStatus(); // Recursive poll
+        }
+      };
+
+      await pollStatus();
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Processing failed';
