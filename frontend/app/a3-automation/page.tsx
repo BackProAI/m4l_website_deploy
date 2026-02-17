@@ -21,6 +21,12 @@ export default function A3AutomationPage() {
   const [processedPdfUrl, setProcessedPdfUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
+  
+  // Flatten-only mode states
+  const [flattenMode, setFlattenMode] = useState(false);
+  const [flattenFile, setFlattenFile] = useState<File | null>(null);
+  const [flattenedPdfUrl, setFlattenedPdfUrl] = useState<string | null>(null);
+  const [flattening, setFlattening] = useState(false);
 
   // Available templates (will be fetched from backend later)
   const templates = [
@@ -297,6 +303,228 @@ export default function A3AutomationPage() {
             >
               Process A3 Form
             </button>
+          )}
+          
+          {/* OR Divider */}
+          {!processing && !processedPdfUrl && !flattenedPdfUrl && (
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">OR</span>
+              </div>
+            </div>
+          )}
+          
+          {/* Flatten PDF Section */}
+          {!processing && !processedPdfUrl && !flattenedPdfUrl && (
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <h3 className="text-md font-semibold text-m4l-blue mb-3">Flatten PDF Directly</h3>
+              <p className="text-sm text-gray-600 mb-4">Already have a filled PDF? Flatten it to make fields non-editable.</p>
+              
+              {!flattenMode ? (
+                <button
+                  onClick={() => {
+                    setFlattenMode(true);
+                    setError(null);
+                  }}
+                  className="w-full bg-m4l-blue hover:bg-blue-800 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <FileCheck className="h-5 w-5" />
+                  Upload PDF to Flatten
+                </button>
+              ) : (
+                <>
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const file = e.dataTransfer.files[0];
+                      if (file && file.type === 'application/pdf') {
+                        setFlattenFile(file);
+                        setError(null);
+                        toast.success(`File uploaded: ${file.name}`);
+                      } else {
+                        toast.error('Please upload a PDF file');
+                      }
+                    }}
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'application/pdf';
+                      input.onchange = (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) {
+                          setFlattenFile(file);
+                          setError(null);
+                          toast.success(`File uploaded: ${file.name}`);
+                        }
+                      };
+                      input.click();
+                    }}
+                    className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors mb-3
+                      ${flattenFile 
+                        ? 'border-green-300 bg-green-50' 
+                        : 'border-gray-300 hover:border-m4l-blue hover:bg-white'
+                      }`}
+                  >
+                    <div className="flex flex-col items-center gap-3">
+                      {flattenFile ? (
+                        <FileCheck className="h-10 w-10 text-green-600" />
+                      ) : (
+                        <Upload className="h-10 w-10 text-gray-400" />
+                      )}
+                      <div>
+                        {flattenFile ? (
+                          <>
+                            <p className="text-md font-medium text-green-700">
+                              {flattenFile.name}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {(flattenFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-md font-medium text-gray-700">
+                              Drag & drop PDF here
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              or click to browse (PDF only - max 50MB)
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {flattenFile && (
+                    <button
+                      onClick={() => {
+                        setFlattenFile(null);
+                        setError(null);
+                      }}
+                      className="text-xs text-gray-600 hover:text-gray-800 underline mb-3"
+                    >
+                      Remove file
+                    </button>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        if (!flattenFile) {
+                          toast.error('Please upload a PDF file first');
+                          return;
+                        }
+                        
+                        setFlattening(true);
+                        const toastId = toast.loading('Flattening PDF...');
+                        
+                        try {
+                          const form = new FormData();
+                          form.append('file', flattenFile);
+
+                          const API_BASE = process.env.NEXT_PUBLIC_A3_API || '';
+                          const flattenUrl = (API_BASE ? API_BASE : '') + '/api/a3/flatten';
+
+                          const response = await fetch(flattenUrl, {
+                            method: 'POST',
+                            body: form,
+                          });
+
+                          if (!response.ok) {
+                            let msg = `Flatten failed: ${response.status}`;
+                            try {
+                              const j = await response.json();
+                              if (j && j.detail) msg = String(j.detail);
+                            } catch (_) {}
+                            throw new Error(msg);
+                          }
+
+                          const result = await response.json();
+                          const downloadUrl = result?.downloadUrl || null;
+                          if (!downloadUrl) throw new Error('Flatten did not return download URL');
+
+                          setFlattenedPdfUrl(downloadUrl);
+                          toast.success('PDF flattened successfully!', { id: toastId });
+                        } catch (err) {
+                          const errorMessage = err instanceof Error ? err.message : 'Flatten failed';
+                          setError(errorMessage);
+                          toast.error(errorMessage, { id: toastId });
+                        } finally {
+                          setFlattening(false);
+                        }
+                      }}
+                      disabled={!flattenFile || flattening}
+                      className="flex-1 bg-m4l-blue hover:bg-blue-800 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {flattening ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Flattening...
+                        </>
+                      ) : (
+                        <>
+                          <FileCheck className="h-4 w-4" />
+                          Flatten PDF
+                        </>
+                      )}
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setFlattenMode(false);
+                        setFlattenFile(null);
+                        setError(null);
+                      }}
+                      className="px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 rounded-lg transition-colors text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          
+          {/* Flatten Result */}
+          {flattenedPdfUrl && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+                <h3 className="text-lg font-semibold text-m4l-blue">PDF Flattened Successfully</h3>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = flattenedPdfUrl;
+                    link.download = 'flattened.pdf';
+                    link.click();
+                    toast.success('Download started!');
+                  }}
+                  className="w-full bg-m4l-orange hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <Download className="h-5 w-5" />
+                  Download Flattened PDF
+                </button>
+
+                <button
+                  onClick={() => {
+                    setFlattenMode(false);
+                    setFlattenFile(null);
+                    setFlattenedPdfUrl(null);
+                    setError(null);
+                  }}
+                  className="w-full bg-[var(--surface)] hover:bg-[rgba(255,255,255,0.02)] text-[var(--foreground)] font-medium py-2 px-4 rounded-lg transition-colors"
+                >
+                  Flatten Another PDF
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Error Display */}

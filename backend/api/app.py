@@ -267,7 +267,7 @@ async def api_a3_status(job_id: str):
 
 @app.post("/api/a3/flatten")
 async def api_a3_flatten(file: UploadFile = File(...)):
-    """Flatten PDF form fields to make them non-editable."""
+    """Flatten PDF form fields to make them non-editable. Stores both pre-flattened and flattened versions."""
     if flatten_pdf is None:
         raise HTTPException(status_code=500, detail="Flatten utility not available")
 
@@ -278,13 +278,23 @@ async def api_a3_flatten(file: UploadFile = File(...)):
     save_path = UPLOAD_DIR / f"{upload_id}_{file.filename}"
     _save_upload(file, save_path)
 
+    # Save pre-flattened version to outputs for future re-editing
+    pre_flatten_path = OUTPUT_DIR / f"{upload_id}_pre_flatten.pdf"
+    shutil.copy2(save_path, pre_flatten_path)
+
+    # Create flattened version
     output_path = OUTPUT_DIR / f"{upload_id}_flattened.pdf"
     try:
         flattened = flatten_pdf(str(save_path), str(output_path))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Flatten failed: {e}")
 
-    return JSONResponse(content={"flattenedPdf": str(output_path), "downloadUrl": f"/downloads/{output_path.name}"})
+    return JSONResponse(content={
+        "flattenedPdf": str(output_path), 
+        "downloadUrl": f"/downloads/{output_path.name}",
+        "preFlattenUrl": f"/downloads/{pre_flatten_path.name}",
+        "jobId": upload_id
+    })
 
 
 @app.get("/downloads/{filename}")
@@ -327,12 +337,9 @@ async def get_history(days: int = 30):
     import json
     
     # Get the base URL for constructing download links
-    # Try environment variable first, fallback to common Render URL pattern
+    # Use relative URLs for local development (frontend proxy will handle routing)
+    # Use full URL for production deployment
     base_url = os.getenv("BACKEND_URL", "")
-    if not base_url:
-        # If running on Render, construct the URL
-        render_service = os.getenv("RENDER_SERVICE_NAME", "m4l-backend")
-        base_url = f"https://{render_service}.onrender.com"
     
     cutoff_time = datetime.now() - timedelta(days=days)
     history_items = []
@@ -412,14 +419,23 @@ async def get_history(days: int = 30):
                         # Extract UUID from filename
                         job_id = item.stem.replace('_processed', '').replace('_flattened', '')
                         
-                        history_items.append({
+                        history_item = {
                             "id": job_id,
                             "tool": "a3-automation",
                             "fileName": item.name,
                             "status": "completed",
                             "timestamp": mtime.isoformat(),
                             "downloadUrl": f"{base_url}/downloads/{item.name}"
-                        })
+                        }
+                        
+                        # If this is a flattened PDF, check if pre-flatten version exists
+                        if '_flattened.pdf' in item.name:
+                            pre_flatten_file = OUTPUT_DIR / f"{job_id}_pre_flatten.pdf"
+                            if pre_flatten_file.exists():
+                                # Use /view endpoint for inline display in browser (not /downloads which forces download)
+                                history_item["preFlattenUrl"] = f"{base_url}/view/{pre_flatten_file.name}"
+                        
+                        history_items.append(history_item)
             
             except Exception as e:
                 # Skip items that cause errors (permissions, etc.)
@@ -458,102 +474,6 @@ async def logout():
     response = JSONResponse(content={"success": True, "message": "Logged out"})
     response.delete_cookie(key="m4l_session")
     return response
-    
-    try:
-        # Scan outputs directory
-        for item in OUTPUT_DIR.iterdir():
-            try:
-                # Get modification time
-                mtime = datetime.fromtimestamp(item.stat().st_mtime)
-                
-                # Skip items older than cutoff
-                if mtime < cutoff_time:
-                    continue
-                
-                # Determine job type and details
-                if item.is_dir():
-                    # Post-review or value-creator (subdirectory structure)
-                    job_id = item.name
-                    
-                    # Check for value-creator
-                    if (item / "value_creator_output.docx").exists():
-                        debug_file = item / "value_creator_output.debug.json"
-                        output_file = "value_creator_output.docx"
-                        
-                        # Try to extract original filename from debug JSON
-                        original_name = "value-creator-document.pdf"
-                        if debug_file.exists():
-                            try:
-                                with open(debug_file, 'r', encoding='utf-8') as f:
-                                    debug_data = json.load(f)
-                                    input_path = debug_data.get('input_path', '')
-                                    if input_path:
-                                        original_name = Path(input_path).name
-                            except:
-                                pass
-                        
-                        history_items.append({
-                            "id": job_id,
-                            "tool": "value-creator",
-                            "fileName": original_name,
-                            "status": "completed",
-                            "timestamp": mtime.isoformat(),
-                            "downloadUrl": f"{base_url}/downloads/{job_id}/{output_file}"
-                        })
-                    
-                    # Check for post-review
-                    elif any(f.name.startswith('changes_summary_') for f in item.iterdir() if f.is_file()):
-                        # Find the DOCX file
-                        docx_files = [f for f in item.iterdir() if f.suffix == '.docx']
-                        if docx_files:
-                            output_file = docx_files[0].name
-                            
-                            # Try to extract info from changes summary
-                            original_name = "post-review-document.pdf"
-                            summary_files = [f for f in item.iterdir() if f.name.startswith('changes_summary_')]
-                            if summary_files:
-                                try:
-                                    with open(summary_files[0], 'r', encoding='utf-8') as f:
-                                        summary_data = json.load(f)
-                                        # Could extract more info here if available
-                                except:
-                                    pass
-                            
-                            history_items.append({
-                                "id": job_id,
-                                "tool": "post-review",
-                                "fileName": original_name,
-                                "status": "completed",
-                                "timestamp": mtime.isoformat(),
-                                "downloadUrl": f"{base_url}/downloads/{job_id}/{output_file}"
-                            })
-                
-                elif item.is_file():
-                    # A3 automation (direct PDF files)
-                    if item.suffix == '.pdf' and ('_processed.pdf' in item.name or '_flattened.pdf' in item.name):
-                        # Extract UUID from filename
-                        job_id = item.stem.replace('_processed', '').replace('_flattened', '')
-                        
-                        history_items.append({
-                            "id": job_id,
-                            "tool": "a3-automation",
-                            "fileName": item.name,
-                            "status": "completed",
-                            "timestamp": mtime.isoformat(),
-                            "downloadUrl": f"{base_url}/downloads/{item.name}"
-                        })
-            
-            except Exception as e:
-                # Skip items that cause errors (permissions, etc.)
-                continue
-        
-        # Sort by timestamp descending (most recent first)
-        history_items.sort(key=lambda x: x['timestamp'], reverse=True)
-        
-        return JSONResponse(content={"history": history_items, "total": len(history_items)})
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve history: {str(e)}")
 
 
 @app.get("/view/{filename}")

@@ -1,0 +1,209 @@
+{
+  "status": "completed",
+  "filename": "DOS Conversation.pdf",
+  "result": {
+    "success": true,
+    "file_name": "de576b56-7fa6-4be3-a491-f88208b76d0f_DOS Conversation.pdf",
+    "total_processing_time": 72.34069776535034,
+    "pages_processed": 2,
+    "sections_processed": 21,
+    "sections_with_text": 19,
+    "output_pdf_path": "/view/de576b56-7fa6-4be3-a491-f88208b76d0f_processed.pdf",
+    "error": null,
+    "approach": "sectioned_ocr",
+    "page_results": [
+      {
+        "success": true,
+        "page_number": 1,
+        "sections": [
+          {
+            "section_id": 1,
+            "text": "- Getting back\n  into the property\n  market\n\n- Not earning\n  enough to support\n  your lifestyle",
+            "location": "Section_1_1",
+            "confidence": "high",
+            "target_field": "Dangers to be eliminated"
+          },
+          {
+            "section_id": 2,
+            "text": "- Get another better paid job",
+            "location": "Section_1_2",
+            "confidence": "high",
+            "target_field": "Opportunities to be focused on & captured"
+          },
+          {
+            "section_id": 3,
+            "text": "- Divorce final\n- Ready to get on with life",
+            "location": "Section_1_3",
+            "confidence": "high",
+            "target_field": "Strengths to be reinforced & maximised"
+          },
+          {
+            "section_id": 4,
+            "text": "- Borrow up to $625.00 with\n  monthly repayments of $3,794.59",
+            "location": "Section_1_4",
+            "confidence": "high",
+            "target_field": "Right_mid"
+          },
+          {
+            "section_id": 5,
+            "text": "- look both in Australia\nand potentially overseas for a\nnew job",
+            "location": "Section_1_5",
+            "confidence": "high",
+            "target_field": "Right_belowmid"
+          },
+          {
+            "section_id": 6,
+            "text": "",
+            "location": "Section_1_6",
+            "confidence": "low",
+            "target_field": "Right_bottom"
+          }
+        ],
+        "total_sections": 6,
+        "processing_time": 9.577249765396118,
+        "file_name": "de576b56-7fa6-4be3-a491-f88208b76d0f_DOS Conversation.pdf",
+        "file_type": "PDF",
+        "direct_field_mapping": {
+          "Dangers to be eliminated": "- Getting back\n  into the property\n  market\n\n- Not earning\n  enough to support\n  your lifestyle",
+          "Opportunities to be focused on & captured": "- Get another better paid job",
+          "Strengths to be reinforced & maximised": "- Divorce final\n- Ready to get on with life",
+          "Right_mid": "- Borrow up to $625.00 with\n  monthly repayments of $3,794.59",
+          "Right_belowmid": "- look both in Australia\nand potentially overseas for a\nnew job"
+        }
+      },
+      {
+        "success": true,
+        "page_number": 2,
+        "sections": [
+          {
+            "section_id": 1,
+            "text": "- Look at purchasing prop",
+            "location": "Section_2_1",
+            "confidence": "high",
+            "target_field": "money_goals"
+          },
+          {
+            "section_id": 2,
+            "text": "- Leave W&K  \nand get a better paid  \njob.",
+            "location": "Section_2_2",
+            "confidence": "high",
+            "target_field": "business_goals"
+          },
+          {
+            "section_id": 3,
+            "text": "- Go away  \nwith friends",
+            "location": "Section_2_3",
+            "confidence": "high",
+            "target_field": "leisure_goals"
+          },
+          {
+            "section_id": 4,
+            "text": "- Keep walking  \nthe dog  \n- Keep weight off",
+            "location": "Section_2_4",
+            "confidence": "high",
+            "target_field": "health_goals"
+          },
+          {
+            "section_id": 5,
+            "text": "- Be open to  \nembarking on another  \nrelationship",
+            "location": "Section_2_5",
+            "confidence": "high",
+            "target_field": "family_goals"
+          },
+          {
+            "section_id": 6,
+            "text": "- According to\nAmanda Tucker\nyou may borrow up\nto $625,000 on\na $135,000 sal",
+            "location": "Section_2_6",
+            "confidence": "high",
+            "target_field": "money_now"
+          },
+          {
+            "section_id": 7,
+            "text": "- Actively looking\nat strategy role\nperhaps overseas",
+            "location": "Section_2_7",
+            "confidence": "high",
+            "target_field": "business_now"
+          },
+          {
+            "section_id": 8,
+            "text": "- Beach",
+            "location": "Section_2_8",
+            "confidence": "high",
+            "target_field": "leisure_now"
+          },
+          {
+            "section_id": 9,
+            "text": "- Dropped weight  \n  not due to stress  \n  tighten up  \n  alcohol",
+            "location": "Section_2_9",
+            "confidence": "high",
+            "target_field": "health_now"
+          },
+          {
+            "section_id": 10,
+            "text": "- Proposal\ndivorce",
+            "location": "Section_2_10",
+            "confidence": "high",
+            "target_field": "family_now"
+          },
+          {
+            "section_id": 11,
+            "text": "- Have a look at\n  what options you\n  have with purchasing\n  a property around\n  $1 million 0-1.5%",
+            "location": "Section_2_11",
+            "confidence": "high",
+            "target_field": "money_todo"
+          },
+          {
+            "section_id": 12,
+            "text": "- write your\nown job descript",
+            "location": "Section_2_12",
+            "confidence": "high",
+            "target_field": "business_todo"
+          },
+          {
+            "section_id": 13,
+            "text": "",
+            "location": "Section_2_13",
+            "confidence": "low",
+            "target_field": "leisure_todo"
+          },
+          {
+            "section_id": 14,
+            "text": "- make time  \nin the day for  \nexercise and manage  \nmental health  \nevening",
+            "location": "Section_2_14",
+            "confidence": "high",
+            "target_field": "health_todo"
+          },
+          {
+            "section_id": 15,
+            "text": "- Good things  \nwill come  \nyour way",
+            "location": "Section_2_15",
+            "confidence": "high",
+            "target_field": "family_todo"
+          }
+        ],
+        "total_sections": 15,
+        "processing_time": 24.612812995910645,
+        "file_name": "de576b56-7fa6-4be3-a491-f88208b76d0f_DOS Conversation.pdf",
+        "file_type": "PDF",
+        "direct_field_mapping": {
+          "money_goals": "- Look at purchasing prop",
+          "business_goals": "- Leave W&K  \nand get a better paid  \njob.",
+          "leisure_goals": "- Go away  \nwith friends",
+          "health_goals": "- Keep walking  \nthe dog  \n- Keep weight off",
+          "family_goals": "- Be open to  \nembarking on another  \nrelationship",
+          "money_now": "- According to\nAmanda Tucker\nyou may borrow up\nto $625,000 on\na $135,000 sal",
+          "business_now": "- Actively looking\nat strategy role\nperhaps overseas",
+          "leisure_now": "- Beach",
+          "health_now": "- Dropped weight  \n  not due to stress  \n  tighten up  \n  alcohol",
+          "family_now": "- Proposal\ndivorce",
+          "money_todo": "- Have a look at\n  what options you\n  have with purchasing\n  a property around\n  $1 million 0-1.5%",
+          "business_todo": "- write your\nown job descript",
+          "health_todo": "- make time  \nin the day for  \nexercise and manage  \nmental health  \nevening",
+          "family_todo": "- Good things  \nwill come  \nyour way"
+        }
+      }
+    ],
+    "downloadUrl": "/downloads/de576b56-7fa6-4be3-a491-f88208b76d0f_processed.pdf"
+  },
+  "error": null
+}

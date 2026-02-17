@@ -12,9 +12,11 @@ import {
   Search,
   Filter,
   Calendar,
-  Loader2
+  Loader2,
+  Edit
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PdfPreviewModal from '@/components/PdfPreviewModal';
 
 interface HistoryItem {
   id: string;
@@ -23,6 +25,7 @@ interface HistoryItem {
   status: 'completed' | 'failed' | 'processing';
   timestamp: string;
   downloadUrl?: string;
+  preFlattenUrl?: string;
   error?: string;
 }
 
@@ -33,6 +36,10 @@ export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Re-flatten modal state
+  const [isReflattenModalOpen, setIsReflattenModalOpen] = useState(false);
+  const [selectedPreFlattenUrl, setSelectedPreFlattenUrl] = useState<string | null>(null);
 
   // Fetch history on mount
   useEffect(() => {
@@ -70,6 +77,58 @@ export default function HistoryPage() {
       setHistory([]); // Set empty array on error
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const openReflattenModal = (preFlattenUrl: string) => {
+    setSelectedPreFlattenUrl(preFlattenUrl);
+    setIsReflattenModalOpen(true);
+  };
+
+  const handleReflatten = async (editedPdfFile: File): Promise<string> => {
+    if (!editedPdfFile || editedPdfFile.type !== 'application/pdf') {
+      throw new Error('Invalid PDF file');
+    }
+
+    const toastId = toast.loading('Re-flattening PDF...');
+
+    try {
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', editedPdfFile);
+      
+      // Call flatten API
+      const flattenResponse = await fetch('/api/a3/flatten', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!flattenResponse.ok) {
+        let msg = `Re-flatten failed: ${flattenResponse.status}`;
+        try {
+          const j = await flattenResponse.json();
+          if (j && j.detail) msg = String(j.detail);
+        } catch (_) {}
+        throw new Error(msg);
+      }
+      
+      const result = await flattenResponse.json();
+      const downloadUrl = result?.downloadUrl || null;
+      if (!downloadUrl) throw new Error('Re-flatten did not return download URL');
+      
+      toast.success('PDF re-flattened successfully!', { id: toastId });
+      
+      // Refresh history to show new flattened version
+      await fetchHistory();
+      
+      // For inline preview in the modal, use the `/view/{filename}` endpoint
+      const fileName = downloadUrl.split('/').pop() || '';
+      const previewUrl = `/view/${fileName}`;
+      return previewUrl;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Re-flatten failed';
+      toast.error(errorMessage, { id: toastId });
+      throw err;
     }
   };
 
@@ -310,6 +369,17 @@ export default function HistoryPage() {
                         <span className="capitalize">{item.status}</span>
                       </div>
 
+                      {/* Edit & Re-flatten Button (for flattened PDFs with pre-flatten version) */}
+                      {item.status === 'completed' && item.preFlattenUrl && (
+                        <button
+                          onClick={() => openReflattenModal(item.preFlattenUrl!)}
+                          className="flex items-center gap-2 px-4 py-2 bg-m4l-blue text-white rounded-lg hover:bg-teal-700 transition-colors"
+                        >
+                          <Edit className="h-5 w-5" />
+                          <span className="hidden sm:inline">Edit & Re-flatten</span>
+                        </button>
+                      )}
+
                       {/* Download Button */}
                       {item.status === 'completed' && item.downloadUrl && (
                         <a
@@ -357,6 +427,66 @@ export default function HistoryPage() {
         </>
         )}
       </div>
+
+      {/* Re-flatten Modal */}
+      {isReflattenModalOpen && selectedPreFlattenUrl && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="flex gap-4 max-w-[1600px] w-full h-[90vh]">
+            {/* Modal - Left Side */}
+            <div className="flex-1">
+              <PdfPreviewModal
+                pdfUrl={selectedPreFlattenUrl}
+                onClose={() => {
+                  setIsReflattenModalOpen(false);
+                  setSelectedPreFlattenUrl(null);
+                }}
+                onFlatten={handleReflatten}
+              />
+            </div>
+            
+            {/* Instructions Box - Right Side */}
+            <div className="w-80 bg-white rounded-xl shadow-2xl p-6 flex flex-col">
+              <div className="flex items-start gap-3 mb-4">
+                <svg className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="font-bold text-gray-900 text-lg">How to Edit & Re-flatten</h3>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto">
+                <ol className="space-y-4 text-sm text-gray-700">
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-semibold flex items-center justify-center text-xs">1</span>
+                    <span className="pt-0.5">Make your edits in the PDF viewer</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-semibold flex items-center justify-center text-xs">2</span>
+                    <span className="pt-0.5">Click the download button in the PDF toolbar and select <strong>"With your changes"</strong></span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-semibold flex items-center justify-center text-xs">3</span>
+                    <span className="pt-0.5">Save the edited PDF to your computer</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-semibold flex items-center justify-center text-xs">4</span>
+                    <span className="pt-0.5">Click the <strong>"Re-flatten PDF"</strong> button in the modal</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-semibold flex items-center justify-center text-xs">5</span>
+                    <span className="pt-0.5">Upload the edited PDF you just downloaded</span>
+                  </li>
+                </ol>
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <p className="text-xs text-gray-500 text-center">
+                  💡 Tip: The browser's PDF editor lets you fill forms directly
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
