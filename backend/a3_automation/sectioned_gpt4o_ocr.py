@@ -67,7 +67,7 @@ except Exception as e:
 class SectionedGPT4oOCR:
     """GPT-4o OCR with manual section definitions for consistent results."""
     
-    def __init__(self, api_key: str = None, section_config_path: str = "backend/a3_automation/A3_templates/a3_section_config.json", enable_spell_check: bool = True):
+    def __init__(self, api_key: str = None, section_config_path: str = "A3_templates/a3_section_config.json", enable_spell_check: bool = True):
         """Initialize sectioned OCR with API key and section configuration."""
         # Specifically get OpenAI API key (not GitHub token)
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
@@ -132,7 +132,7 @@ class SectionedGPT4oOCR:
         
         # If not in config, try to detect from blank A3 template
         template_candidates = [
-            Path("backend/a3_automation/A3_templates/More4Life A3 Goals - blank.pdf"),
+            Path("A3_templates/More4Life A3 Goals - blank.pdf"),
             Path("processed_documents/A3_Custom_Template.pdf")
         ]
         
@@ -213,229 +213,65 @@ class SectionedGPT4oOCR:
             return None
         
         return cropped
-    
-    def detect_diagonal_strike_through(self, image: Image.Image) -> bool:
-        """
-        Detect diagonal strike-through pattern using OpenCV.
-        Returns True if diagonal line detected (document completed).
-        """
-        # Convert PIL Image to OpenCV format
-        img_array = np.array(image)
-        gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-        
-        # Edge detection
-        edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-        
-        # Hough Line Transform to detect lines
-        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=100, 
-                                minLineLength=100, maxLineGap=10)
-        
-        if lines is None:
-            return False
-        
-        # Check for diagonal lines (roughly 45 degrees)
-        diagonal_count = 0
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            # Calculate angle
-            angle = np.abs(np.arctan2(y2 - y1, x2 - x1) * 180 / np.pi)
-            # Check if roughly diagonal (30-60 degrees)
-            if 30 <= angle <= 60:
-                diagonal_count += 1
-        
-        # If we found multiple diagonal lines, likely strike-through
-        return diagonal_count >= 2
-    
-    def _prepare_classification_image(self, image: Image.Image, max_side: int = 1600) -> Image.Image:
-        """Downscale images for document-level mode classification."""
-        max_dim = max(image.width, image.height)
-        if max_dim <= max_side:
-            return image
-        
-        scale = max_side / max_dim
-        new_size = (int(image.width * scale), int(image.height * scale))
-        return image.resize(new_size, Image.Resampling.LANCZOS)
-    
-    def detect_document_mode(self, page_images: List[Image.Image]) -> Dict[str, Any]:
-        """Detect whether the document is handwriting-only or hybrid printed with corrections."""
-        if not page_images:
-            return {"mode": "hybrid", "confidence": "low", "reason": "no_images"}
-        
-        # Prepare content with up to 2 pages
-        content = []
-        content.append({
-            "type": "text",
-            "text": (
-                "Analyze this A3 goals document and classify it as:\n\n"
-                "**handwriting_only**: The entire document is handwritten from scratch. "
-                "No pre-printed template visible, or only blank lines/minimal structure.\n\n"
-                "**hybrid**: The document has a pre-printed template with labels and structure, "
-                "and handwritten content filling it in. May include handwritten corrections, "
-                "strike-throughs, or additions over printed text.\n\n"
-                "Instructions:\n"
-                "1. Look for printed labels, section headers, or form structure\n"
-                "2. If you see printed text + handwriting → 'hybrid'\n"
-                "3. If only handwriting with no printed structure → 'handwriting_only'\n"
-                "4. Provide your confidence level: high, medium, or low\n"
-                "5. Give a brief reason for your classification\n\n"
-                "Respond in this exact JSON format:\n"
-                "{\n"
-                '  "mode": "hybrid" or "handwriting_only",\n'
-                '  "confidence": "high" or "medium" or "low",\n'
-                '  "reason": "brief explanation"\n'
-                "}"
+
+    def detect_diagonal_strike_through(self, section_image: Image.Image) -> bool:
+        """Detect diagonal strike-through lines in a section image."""
+        image_array = np.array(section_image)
+
+        if image_array.ndim == 3:
+            gray = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)
+        else:
+            gray = image_array
+
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        edges = cv2.Canny(blurred, 40, 120)
+
+        height, width = edges.shape
+        diag_len = (width ** 2 + height ** 2) ** 0.5
+
+        # Two-pass detection: strict then relaxed
+        passes = [
+            {"min_ratio": 0.25, "threshold": 60, "max_gap": 18},
+            {"min_ratio": 0.18, "threshold": 45, "max_gap": 25}
+        ]
+
+        for params in passes:
+            min_line_length = max(35, int(diag_len * params["min_ratio"]))
+
+            lines = cv2.HoughLinesP(
+                edges,
+                rho=1,
+                theta=np.pi / 180,
+                threshold=params["threshold"],
+                minLineLength=min_line_length,
+                maxLineGap=params["max_gap"]
             )
-        })
-        
-        # Add up to 2 page images
-        for i, img in enumerate(page_images[:2]):
-            classification_image = self._prepare_classification_image(img)
-            image_base64 = self.encode_image(classification_image)
-            content.append({
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/png;base64,{image_base64}",
-                    "detail": "low"
-                }
-            })
-        
-        payload = {
-            "model": "gpt-4.1",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": content
-                }
-            ],
-            "max_tokens": 200,
-            "temperature": 0
-        }
-        
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
-        
-        try:
-            response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=30
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            response_text = result['choices'][0]['message']['content'].strip()
-            
-            # Parse JSON response
-            import json
-            mode_info = json.loads(response_text)
-            
-            # Validate mode
-            if mode_info.get("mode") not in ["handwriting_only", "hybrid"]:
-                print(f"   ⚠️ Unexpected mode '{mode_info.get('mode')}', defaulting to 'hybrid'")
-                return {"mode": "hybrid", "confidence": "low", "reason": "invalid_response"}
-            
-            print(f"   📋 Document mode: {mode_info['mode']} (confidence: {mode_info.get('confidence', 'medium')})")
-            print(f"       Reason: {mode_info.get('reason', 'N/A')}")
-            
-            return mode_info
-            
-        except Exception as e:
-            print(f"   ⚠️ Document mode detection failed: {e}, defaulting to 'hybrid'")
-            return {"mode": "hybrid", "confidence": "low", "reason": f"error: {str(e)}"}
-    
-    def extract_text_from_section_hybrid(self, section_image: Image.Image, section_name: str) -> Dict[str, Any]:
-        """Extract final corrected text from a hybrid section using GPT-4.1."""
-        print(f"   🔍 Processing section (hybrid): {section_name}")
-        
-        # Encode image
-        base64_image = self.encode_image(section_image)
-        
-        # Create prompt for hybrid printed + handwritten corrections
-        prompt = f"""You are an expert OCR system. This section contains printed text and handwritten corrections.
 
-TASK: Return the final corrected text for this section.
+            if lines is None:
+                continue
 
-CRITICAL INSTRUCTIONS:
-1. **PRINTED TEXT BASELINE**: Start from the printed text as the base.
-2. **STRAIGHT LINE STRIKE-THROUGH**: If a straight line strikes through specific words, delete only those words.
-3. **DIAGONAL STRIKE-THROUGH**: If diagonal lines cross an entire line, dotpoint, or paragraph, omit that entire line/paragraph.
-4. **ARROWS & REPLACEMENTS**: If arrows or handwritten notes indicate a replacement, replace the printed text with the handwritten correction.
-5. **HANDWRITTEN ADDITIONS**: If a handwritten dash or bullet continues a list, add that handwritten line beneath the related printed line.
-6. **NO HALLUCINATION**: Only include text that is visible in the image.
-7. **PRESERVE STRUCTURE**: Keep line breaks and list formatting consistent with the section.
+            for line in lines:
+                x1, y1, x2, y2 = line[0]
+                dx = x2 - x1
+                dy = y2 - y1
+                length = (dx ** 2 + dy ** 2) ** 0.5
+                if length < min_line_length:
+                    continue
 
-Return the corrected text directly, no JSON formatting needed. If nothing should remain after applying corrections, return "NO_TEXT_FOUND"."""
+                angle = abs(np.degrees(np.arctan2(dy, dx))) % 180
+                if not ((20 <= angle <= 70) or (110 <= angle <= 160)):
+                    continue
 
-        # API payload
-        payload = {
-            "model": "gpt-4.1",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}", "detail": "high"}}
-                    ]
-                }
-            ],
-            "max_tokens": 500,
-            "temperature": 0
-        }
-        
-        try:
-            start_time = time.time()
-            response = requests.post(self.api_url, headers=self.headers, json=payload, timeout=30)
-            processing_time = time.time() - start_time
-            
-            if response.status_code == 200:
-                result = response.json()
-                extracted_text = result['choices'][0]['message']['content'].strip()
-                
-                # Handle empty results
-                if not extracted_text or extracted_text == "NO_TEXT_FOUND":
-                    print(f"       ⚪ No text found in section")
-                    return {
-                        "success": True,
-                        "text": "",
-                        "processing_time": processing_time,
-                        "confidence": "low",
-                        "extraction_method": "hybrid"
-                    }
-                
-                print(f"       ✅ Extracted (hybrid): '{extracted_text[:50]}{'...' if len(extracted_text) > 50 else ''}'")
-                return {
-                    "success": True,
-                    "text": extracted_text,
-                    "processing_time": processing_time,
-                    "confidence": "high",
-                    "extraction_method": "hybrid"
-                }
-            else:
-                error_msg = f"API error {response.status_code}: {response.text}"
-                print(f"       ❌ {error_msg}")
-                return {
-                    "success": False,
-                    "error": error_msg,
-                    "processing_time": processing_time,
-                    "extraction_method": "hybrid"
-                }
-                
-        except Exception as e:
-            error_msg = f"Exception during hybrid extraction: {str(e)}"
-            print(f"       ❌ {error_msg}")
-            return {
-                "success": False,
-                "error": error_msg,
-                "processing_time": 0,
-                "extraction_method": "hybrid"
-            }
+                mid_x = (x1 + x2) / 2
+                mid_y = (y1 + y2) / 2
+                if not (0.15 * width <= mid_x <= 0.85 * width and 0.15 * height <= mid_y <= 0.85 * height):
+                    continue
 
+                return True
+
+        return False
     
     def extract_text_from_section(self, section_image: Image.Image, section_name: str) -> Dict[str, Any]:
-
         """Extract text from a single section using GPT-4o."""
         print(f"   🔍 Processing section: {section_name}")
         
@@ -524,8 +360,178 @@ Return the extracted text directly, no JSON formatting needed. If absolutely no 
                 "error": error_msg,
                 "processing_time": 0
             }
+
+    def extract_text_from_section_hybrid(self, section_image: Image.Image, section_name: str) -> Dict[str, Any]:
+        """Extract final corrected text from a hybrid section using GPT-4o."""
+        print(f"   🔍 Processing section (hybrid): {section_name}")
+
+        # Encode image
+        base64_image = self.encode_image(section_image)
+
+        # Create prompt for hybrid printed + handwritten corrections
+        prompt = f"""You are an expert OCR system. This section contains printed text and handwritten corrections.
+
+TASK: Return the final corrected text for this section.
+
+CRITICAL INSTRUCTIONS:
+1. **PRINTED TEXT BASELINE**: Start from the printed text as the base.
+2. **STRAIGHT LINE STRIKE-THROUGH**: If a straight line strikes through specific words, delete only those words.
+3. **DIAGONAL STRIKE-THROUGH**: If diagonal lines cross an entire line, dotpoint, or paragraph, omit that entire line/paragraph.
+4. **ARROWS & REPLACEMENTS**: If arrows or handwritten notes indicate a replacement, replace the printed text with the handwritten correction.
+5. **HANDWRITTEN ADDITIONS**: If a handwritten dash or bullet continues a list, add that handwritten line beneath the related printed line.
+6. **NO HALLUCINATION**: Only include text that is visible in the image.
+7. **PRESERVE STRUCTURE**: Keep line breaks and list formatting consistent with the section.
+
+Return the corrected text directly, no JSON formatting needed. If nothing should remain after applying corrections, return "NO_TEXT_FOUND".
+"""
+
+        payload = {
+            "model": "gpt-4.1",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}", "detail": "high"}}
+                    ]
+                }
+            ],
+            "max_tokens": 500,
+            "temperature": 0
+        }
+
+        try:
+            start_time = time.time()
+            response = requests.post(self.api_url, headers=self.headers, json=payload, timeout=30)
+            processing_time = time.time() - start_time
+
+            if response.status_code == 200:
+                result = response.json()
+                extracted_text = result['choices'][0]['message']['content'].strip()
+
+                # Handle empty results
+                if not extracted_text or extracted_text == "NO_TEXT_FOUND":
+                    print(f"       ⚪ No text found in section")
+                    return {
+                        "success": True,
+                        "text": "",
+                        "processing_time": processing_time,
+                        "confidence": "low"
+                    }
+
+                print(f"       ✅ Extracted: '{extracted_text[:50]}{'...' if len(extracted_text) > 50 else ''}'")
+                return {
+                    "success": True,
+                    "text": extracted_text,
+                    "processing_time": processing_time,
+                    "confidence": "high"
+                }
+
+            else:
+                error_msg = f"API error {response.status_code}: {response.text}"
+                print(f"       ❌ {error_msg}")
+                return {
+                    "success": False,
+                    "error": error_msg,
+                    "processing_time": processing_time
+                }
+
+        except Exception as e:
+            error_msg = f"Request failed: {e}"
+            print(f"       ❌ {error_msg}")
+            return {
+                "success": False,
+                "error": error_msg,
+                "processing_time": 0
+            }
+
+    def _prepare_classification_image(self, image: Image.Image, max_side: int = 1600) -> Image.Image:
+        """Downscale images for document-level mode classification."""
+        max_dim = max(image.width, image.height)
+        if max_dim <= max_side:
+            return image
+
+        scale = max_side / max_dim
+        new_size = (int(image.width * scale), int(image.height * scale))
+        return image.resize(new_size, Image.Resampling.LANCZOS)
+
+    def detect_document_mode(self, page_images: List[Image.Image]) -> Dict[str, Any]:
+        """Detect whether the document is handwriting-only or hybrid printed with corrections."""
+        if not page_images:
+            return {"mode": "hybrid", "confidence": "low", "reason": "no_images"}
+
+        prompt = """Classify this A3 document as one of:
+1) handwriting_only
+2) hybrid_printed_with_corrections
+
+Definitions:
+- handwriting_only: sections are primarily handwritten with little or no printed body text.
+- hybrid_printed_with_corrections: printed text is present and there are handwritten corrections, strike-throughs (straight or diagonal), arrows, or handwritten replacements.
+
+Return ONLY valid JSON in this format:
+{"mode": "handwriting_only"|"hybrid_printed_with_corrections", "confidence": "high"|"medium"|"low", "reason": "short reason"}
+"""
+
+        content = [{"type": "text", "text": prompt}]
+
+        for image in page_images[:2]:
+            prepared = self._prepare_classification_image(image)
+            base64_image = self.encode_image(prepared)
+            content.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{base64_image}", "detail": "low"}
+            })
+
+        payload = {
+            "model": "gpt-4.1",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": content
+                }
+            ],
+            "max_tokens": 200,
+            "temperature": 0
+        }
+
+        try:
+            response = requests.post(self.api_url, headers=self.headers, json=payload, timeout=20)
+            if response.status_code == 200:
+                result = response.json()
+                raw_text = result['choices'][0]['message']['content'].strip()
+
+                start = raw_text.find("{")
+                end = raw_text.rfind("}")
+                if start != -1 and end != -1 and end > start:
+                    raw_text = raw_text[start:end + 1]
+
+                parsed = json.loads(raw_text)
+                mode = parsed.get("mode", "hybrid_printed_with_corrections")
+                confidence = parsed.get("confidence", "low")
+                reason = parsed.get("reason", "")
+
+                if mode not in ["handwriting_only", "hybrid_printed_with_corrections"]:
+                    mode = "hybrid_printed_with_corrections"
+
+                if confidence not in ["high", "medium", "low"]:
+                    confidence = "low"
+
+                # Default to hybrid if uncertain
+                if confidence == "low":
+                    mode = "hybrid_printed_with_corrections"
+
+                return {
+                    "mode": "handwriting_only" if mode == "handwriting_only" else "hybrid",
+                    "confidence": confidence,
+                    "reason": reason
+                }
+
+        except Exception as e:
+            print(f"⚠️ Document mode detection failed: {e}")
+
+        return {"mode": "hybrid", "confidence": "low", "reason": "classification_failed"}
     
-    def process_page_sections(self, image: Image.Image, page_number: int, document_mode: str = "filled") -> List[Dict[str, Any]]:
+    def process_page_sections(self, image: Image.Image, page_number: int, document_mode: str = "handwriting_only") -> List[Dict[str, Any]]:
         """Process all sections for a specific page."""
         page_key = f"page_{page_number}"
         
@@ -534,7 +540,7 @@ Return the extracted text directly, no JSON formatting needed. If absolutely no 
             return []
         
         page_sections = self.sections[page_key]
-        print(f"📄 Processing Page {page_number}: {len(page_sections)} sections (mode: {document_mode})")
+        print(f"📄 Processing Page {page_number}: {len(page_sections)} sections")
         
         results = []
         
@@ -554,18 +560,15 @@ Return the extracted text directly, no JSON formatting needed. If absolutely no 
                 print(f"       ❌ Failed to crop section")
                 continue
             
-            # Route based on document mode and diagonal detection
+            # Extract text from this section
             if document_mode == "hybrid":
-                # Check for diagonal strike-through in this section
                 has_diagonal = self.detect_diagonal_strike_through(section_image)
                 if has_diagonal:
                     print("       ↘️ Detected diagonal strike-through; extracting handwriting only")
                     extraction_result = self.extract_text_from_section(section_image, section_name)
                 else:
-                    # Use hybrid extraction for printed + handwritten corrections
                     extraction_result = self.extract_text_from_section_hybrid(section_image, section_name)
             else:
-                # handwriting_only mode
                 extraction_result = self.extract_text_from_section(section_image, section_name)
             
             # Build section result
@@ -575,13 +578,12 @@ Return the extracted text directly, no JSON formatting needed. If absolutely no 
                 "target_field": target_field,
                 "rect": section_rect,
                 "text": extraction_result.get("text", ""),
-                "success": extraction_result.get("success", True),
+                "success": extraction_result["success"],
                 "processing_time": extraction_result.get("processing_time", 0),
-                "confidence": extraction_result.get("confidence", "low"),
-                "extraction_method": extraction_result.get("extraction_method", "gpt-vision")
+                "confidence": extraction_result.get("confidence", "low")
             }
             
-            if not extraction_result.get("success", True):
+            if not extraction_result["success"]:
                 section_result["error"] = extraction_result.get("error", "Unknown error")
             
             results.append(section_result)
@@ -906,19 +908,19 @@ Respond with just 'A' or 'B' and a brief reason."""
                 print("📄 Processing PDF document...")
                 
                 pdf_doc = fitz.open(document_path)
-                
-                # Detect document mode using low-res images from first 2 pages
+
+                # Detect document mode using low-res images from both pages
                 try:
                     import io
                     classification_images = []
                     for page_index in range(min(2, len(pdf_doc))):
                         page = pdf_doc[page_index]
-                        mat = fitz.Matrix(1.0, 1.0)  # Low-res for classification
+                        mat = fitz.Matrix(1.0, 1.0)
                         pix = page.get_pixmap(matrix=mat)
                         img_data = pix.tobytes("png")
                         page_image = Image.open(io.BytesIO(img_data))
                         classification_images.append(page_image)
-                    
+
                     mode_info = self.detect_document_mode(classification_images)
                     document_mode = mode_info.get("mode", "hybrid")
                     mode_confidence = mode_info.get("confidence", "low")
@@ -975,18 +977,18 @@ Respond with just 'A' or 'B' and a brief reason."""
                 with Image.open(document_path) as img:
                     if img.mode != "RGB":
                         img = img.convert("RGB")
+
+                    # Detect document mode for single image
+                    mode_info = self.detect_document_mode([img])
+                    document_mode = mode_info.get("mode", "hybrid")
+                    mode_confidence = mode_info.get("confidence", "low")
+                    print(f"🔎 Document mode: {document_mode} (confidence: {mode_confidence})")
                     
                     print(f"   📐 Original image size: {img.width}x{img.height}")
                     
                     # Standardize page size to match reference template
                     img = self.standardize_page_size(img)
                     print(f"   📐 Standardized image size: {img.width}x{img.height}")
-                    
-                    # Detect document mode for single image
-                    mode_info = self.detect_document_mode([img])
-                    document_mode = mode_info.get("mode", "hybrid")
-                    mode_confidence = mode_info.get("confidence", "low")
-                    print(f"🔎 Document mode: {document_mode} (confidence: {mode_confidence})")
                     
                     # Process sections (assume page 1 for images)
                     page_results = self.process_page_sections(img, 1, document_mode)
