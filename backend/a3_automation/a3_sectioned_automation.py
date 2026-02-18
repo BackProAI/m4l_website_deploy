@@ -82,7 +82,7 @@ class A3SectionedProcessor:
     def _ensure_template_updated(self):
         """Ensure the PDF template is updated with latest field positions from JSON."""
         try:
-            custom_config_path = Path("A3_templates/custom_field_position.json")
+            custom_config_path = Path("backend/a3_automation/A3_templates/custom_field_position.json")
             custom_template_path = Path("processed_documents/A3_Custom_Template.pdf")
             
             # Check if JSON config exists
