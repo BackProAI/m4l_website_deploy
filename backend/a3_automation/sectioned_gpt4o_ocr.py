@@ -13,6 +13,8 @@ from PIL import Image
 import requests
 from typing import Dict, List, Any, Tuple
 import fitz  # PyMuPDF
+import cv2
+import numpy as np
 
 # Import spell checker
 try:
@@ -212,7 +214,166 @@ class SectionedGPT4oOCR:
         
         return cropped
     
+    def detect_diagonal_strike_through(self, image: Image.Image) -> bool:
+        """
+        Detect diagonal strike-through pattern using OpenCV.
+        Returns True if diagonal line detected (document completed).
+        """
+        # Convert PIL Image to OpenCV format
+        img_array = np.array(image)
+        gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+        
+        # Edge detection
+        edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+        
+        # Hough Line Transform to detect lines
+        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=100, 
+                                minLineLength=100, maxLineGap=10)
+        
+        if lines is None:
+            return False
+        
+        # Check for diagonal lines (roughly 45 degrees)
+        diagonal_count = 0
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            # Calculate angle
+            angle = np.abs(np.arctan2(y2 - y1, x2 - x1) * 180 / np.pi)
+            # Check if roughly diagonal (30-60 degrees)
+            if 30 <= angle <= 60:
+                diagonal_count += 1
+        
+        # If we found multiple diagonal lines, likely strike-through
+        return diagonal_count >= 2
+    
+    def _prepare_classification_image(self, image: Image.Image, max_size: int = 512) -> Image.Image:
+        """
+        Prepare a smaller version of the image for classification.
+        Reduces cost and improves speed for document mode detection.
+        """
+        # Calculate scaling factor
+        scale = min(max_size / image.width, max_size / image.height, 1.0)
+        
+        if scale < 1.0:
+            new_width = int(image.width * scale)
+            new_height = int(image.height * scale)
+            return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        return image
+    
+    def detect_document_mode(self, image: Image.Image) -> str:
+        """
+        Detect whether document is blank or filled using GPT vision.
+        Returns: 'blank', 'filled', or 'completed' (diagonal strike-through)
+        """
+        # First check for diagonal strike-through using OpenCV
+        if self.detect_diagonal_strike_through(image):
+            print("   ✅ Diagonal strike-through detected → COMPLETED")
+            return "completed"
+        
+        # Prepare smaller image for classification
+        classification_image = self._prepare_classification_image(image)
+        image_base64 = self.encode_image(classification_image)
+        
+        # Use GPT-4.1 for classification
+        payload = {
+            "model": "gpt-4.1",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": (
+                                "Analyze this A3 template and classify it as:\n"
+                                "- 'blank': Template with only printed labels/structure, no handwritten content\n"
+                                "- 'filled': Template with handwritten or typed content\n\n"
+                                "Respond with ONLY one word: blank or filled"
+                            )
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{image_base64}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "max_tokens": 10,
+            "temperature": 0
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}"
+        }
+        
+        try:
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=30
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            mode = result['choices'][0]['message']['content'].strip().lower()
+            
+            if mode not in ['blank', 'filled']:
+                print(f"   ⚠️ Unexpected mode '{mode}', defaulting to 'filled'")
+                return 'filled'
+            
+            print(f"   📋 Document mode detected: {mode.upper()}")
+            return mode
+            
+        except Exception as e:
+            print(f"   ⚠️ Classification failed: {e}, defaulting to 'filled'")
+            return 'filled'
+    
+    def extract_text_from_section_hybrid(
+        self, 
+        section_image: Image.Image, 
+        section_name: str,
+        document_mode: str = "filled"
+    ) -> Dict[str, Any]:
+        """
+        Hybrid extraction: Use PyMuPDF for blank templates, GPT-4.1 for filled content.
+        """
+        print(f"   🔍 Processing section: {section_name} (mode: {document_mode})")
+        
+        if document_mode == "blank":
+            # For blank templates, use fast PyMuPDF text extraction
+            # This is significantly cheaper and faster for printed text
+            print(f"   ⚡ Using PyMuPDF for blank template")
+            
+            # Convert PIL Image to temporary PDF page for PyMuPDF
+            import io
+            img_buffer = io.BytesIO()
+            section_image.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+            
+            # Create temporary PDF from image
+            pdf_bytes = fitz.open("pdf", img_buffer.read())
+            page = pdf_bytes[0]
+            
+            # Extract text
+            text = page.get_text()
+            pdf_bytes.close()
+            
+            return {
+                "text": text.strip(),
+                "extraction_method": "pymupdf",
+                "cost_estimate": 0.0
+            }
+        
+        else:
+            # For filled content or completed docs, use GPT-4.1 vision
+            return self.extract_text_from_section(section_image, section_name)
+    
     def extract_text_from_section(self, section_image: Image.Image, section_name: str) -> Dict[str, Any]:
+
         """Extract text from a single section using GPT-4o."""
         print(f"   🔍 Processing section: {section_name}")
         
@@ -243,7 +404,7 @@ Return the extracted text directly, no JSON formatting needed. If absolutely no 
 
         # API payload - simple text response
         payload = {
-            "model": "gpt-4o",
+            "model": "gpt-4.1",
             "messages": [
                 {
                     "role": "user",
@@ -302,7 +463,7 @@ Return the extracted text directly, no JSON formatting needed. If absolutely no 
                 "processing_time": 0
             }
     
-    def process_page_sections(self, image: Image.Image, page_number: int) -> List[Dict[str, Any]]:
+    def process_page_sections(self, image: Image.Image, page_number: int, document_mode: str = "filled") -> List[Dict[str, Any]]:
         """Process all sections for a specific page."""
         page_key = f"page_{page_number}"
         
@@ -311,7 +472,7 @@ Return the extracted text directly, no JSON formatting needed. If absolutely no 
             return []
         
         page_sections = self.sections[page_key]
-        print(f"📄 Processing Page {page_number}: {len(page_sections)} sections")
+        print(f"📄 Processing Page {page_number}: {len(page_sections)} sections (mode: {document_mode})")
         
         results = []
         
@@ -331,8 +492,12 @@ Return the extracted text directly, no JSON formatting needed. If absolutely no 
                 print(f"       ❌ Failed to crop section")
                 continue
             
-            # Extract text from this section
-            extraction_result = self.extract_text_from_section(section_image, section_name)
+            # Extract text from this section using hybrid approach
+            extraction_result = self.extract_text_from_section_hybrid(
+                section_image, 
+                section_name,
+                document_mode
+            )
             
             # Build section result
             section_result = {
@@ -341,12 +506,13 @@ Return the extracted text directly, no JSON formatting needed. If absolutely no 
                 "target_field": target_field,
                 "rect": section_rect,
                 "text": extraction_result.get("text", ""),
-                "success": extraction_result["success"],
+                "success": extraction_result.get("success", True),
                 "processing_time": extraction_result.get("processing_time", 0),
-                "confidence": extraction_result.get("confidence", "low")
+                "confidence": extraction_result.get("confidence", "low"),
+                "extraction_method": extraction_result.get("extraction_method", "gpt-vision")
             }
             
-            if not extraction_result["success"]:
+            if not extraction_result.get("success", True):
                 section_result["error"] = extraction_result.get("error", "Unknown error")
             
             results.append(section_result)
@@ -593,7 +759,7 @@ Respond with just 'A' or 'B' and a brief reason."""
         prompt = "Extract any visible text from this image section. Just return the text, no formatting."
         
         payload = {
-            "model": "gpt-4o",
+            "model": "gpt-4.1",
             "messages": [
                 {
                     "role": "user",
@@ -623,7 +789,7 @@ Respond with just 'A' or 'B' and a brief reason."""
         base64_image = self.encode_image(image)
         
         payload = {
-            "model": "gpt-4o",
+            "model": "gpt-4.1",
             "messages": [
                 {
                     "role": "user",
@@ -696,8 +862,11 @@ Respond with just 'A' or 'B' and a brief reason."""
                     page_image = self.standardize_page_size(page_image)
                     print(f"   📐 Standardized image size: {page_image.width}x{page_image.height}")
                     
+                    # Detect document mode (blank/filled/completed)
+                    document_mode = self.detect_document_mode(page_image)
+                    
                     # Process sections for this page (use logical page number for sectioning)
-                    page_results = self.process_page_sections(page_image, logical_page_num + 1)
+                    page_results = self.process_page_sections(page_image, logical_page_num + 1, document_mode)
                     
                     # Add page info to results
                     for result in page_results:
@@ -724,8 +893,11 @@ Respond with just 'A' or 'B' and a brief reason."""
                     img = self.standardize_page_size(img)
                     print(f"   📐 Standardized image size: {img.width}x{img.height}")
                     
+                    # Detect document mode (blank/filled/completed)
+                    document_mode = self.detect_document_mode(img)
+                    
                     # Process sections (assume page 1 for images)
-                    page_results = self.process_page_sections(img, 1)
+                    page_results = self.process_page_sections(img, 1, document_mode)
                     
                     # Add file info to results
                     for result in page_results:
