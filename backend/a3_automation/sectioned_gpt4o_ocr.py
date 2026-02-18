@@ -67,7 +67,7 @@ except Exception as e:
 class SectionedGPT4oOCR:
     """GPT-4o OCR with manual section definitions for consistent results."""
     
-    def __init__(self, api_key: str = None, section_config_path: str = "A3_templates/a3_section_config.json", enable_spell_check: bool = True):
+    def __init__(self, api_key: str = None, section_config_path: str = "backend/a3_automation/A3_templates/a3_section_config.json", enable_spell_check: bool = True):
         """Initialize sectioned OCR with API key and section configuration."""
         # Specifically get OpenAI API key (not GitHub token)
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
@@ -132,12 +132,12 @@ class SectionedGPT4oOCR:
         
         # If not in config, try to detect from blank A3 template
         template_candidates = [
-            Path("A3_templates/More4Life A3 Goals - blank.pdf"),
+            Path("backend/a3_automation/A3_templates/More4Life A3 Goals - blank.pdf"),
             Path("processed_documents/A3_Custom_Template.pdf")
         ]
         
         # Add glob results
-        template_dir = Path("A3_templates")
+        template_dir = Path("backend/a3_automation/A3_templates")
         if template_dir.exists():
             template_candidates.extend(template_dir.glob("*blank*.pdf"))
             template_candidates.extend(template_dir.glob("*template*.pdf"))
