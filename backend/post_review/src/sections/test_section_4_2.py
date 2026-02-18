@@ -100,7 +100,7 @@ class Section4_2Tester:
             prompt = ref_impl.get_section_4_2_analysis_prompt()
             
             payload = {
-                "model": "gpt-4o",
+                "model": "gpt-4.1",
                 "messages": [
                     {
                         "role": "user",

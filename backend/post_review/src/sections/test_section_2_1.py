@@ -204,7 +204,7 @@ class Section21Tester:
         base64_image = self.encode_image(section_image)
         
         payload = {
-            "model": "gpt-4o",
+            "model": "gpt-4.1",
             "messages": [
                 {
                     "role": "user",

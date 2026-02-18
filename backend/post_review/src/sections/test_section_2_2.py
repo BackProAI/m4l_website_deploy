@@ -271,7 +271,7 @@ class Section2_2Tester:
             prompt = self.get_section_2_2_part1_analysis_prompt()
         
             payload = {
-                "model": "gpt-4o",
+                "model": "gpt-4.1",
                 "messages": [
                     {
                         "role": "user",
@@ -321,7 +321,7 @@ class Section2_2Tester:
             prompt = self.get_section_2_2_part2_analysis_prompt()
         
             payload = {
-                "model": "gpt-4o",
+                "model": "gpt-4.1",
                 "messages": [
                     {
                         "role": "user",

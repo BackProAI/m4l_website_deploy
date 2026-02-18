@@ -664,7 +664,7 @@ class AdvancedWordProcessor:
             """
             
             response = self.client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4.1",
                 messages=[
                     {"role": "system", "content": "You are an expert at interpreting handwritten document annotations."},
                     {"role": "user", "content": prompt}

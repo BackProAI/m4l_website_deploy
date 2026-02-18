@@ -201,7 +201,7 @@ class Section14ImprovedTester:
         base64_image = self.encode_image(section_image)
         
         payload = {
-            "model": "gpt-4o",
+            "model": "gpt-4.1",
             "messages": [
                 {
                     "role": "user",
@@ -280,7 +280,7 @@ Return your analysis as JSON with this structure:
             
             # Make API call using requests
             payload = {
-                "model": "gpt-4o",
+                "model": "gpt-4.1",
                 "messages": [
                     {
                         "role": "user",

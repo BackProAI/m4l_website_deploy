@@ -190,7 +190,7 @@ DELETION SAFETY: Always err on the side of caution - if unsure about handwriting
 
             # Make API call to GPT-4o
             payload = {
-                "model": "gpt-4o",
+                "model": "gpt-4.1",
                 "messages": [
                     {
                         "role": "user",
