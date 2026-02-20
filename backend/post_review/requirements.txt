@@ -6,6 +6,7 @@
 # Core Image & PDF Processing
 Pillow>=10.0.0              # Image processing and manipulation
 PyMuPDF>=1.23.0             # PDF processing and form field handling
+opencv-python>=4.10.0       # Diagonal/cross handwritten mark detection
 
 # HTTP & API Communication
 requests>=2.31.0            # HTTP library for GPT-4o API calls

@@ -1726,7 +1726,7 @@ class UnifiedSectionImplementations:
                 analysis_data = analysis
             
             # Find Section 2_5 table and row
-            table_idx, row_idx = self._find_section_2_5_table_row(doc)
+            table_idx, row_idx = self._find_section_2_5_table_row(doc, analysis_data)
             if table_idx is None or row_idx is None:
                 print(f"      ❌ Could not find Section 2_5 table row")
                 return changes
@@ -1735,7 +1735,7 @@ class UnifiedSectionImplementations:
             
             # RE-FIND row position dynamically in case other rows were deleted  
             print(f"      🔄 RE-FINDING Section 2_5 position after potential row deletions...")
-            fresh_table_idx, fresh_row_idx = self._find_section_2_5_table_row(doc)
+            fresh_table_idx, fresh_row_idx = self._find_section_2_5_table_row(doc, analysis_data)
             
             if fresh_table_idx != table_idx or fresh_row_idx != row_idx:
                 print(f"      📍 Row position CHANGED: {table_idx},{row_idx} → {fresh_table_idx},{fresh_row_idx}")
@@ -1832,8 +1832,49 @@ class UnifiedSectionImplementations:
         
         return changes
     
-    def _find_section_2_5_table_row(self, doc: Document) -> tuple:
+    def _find_section_2_5_table_row(self, doc: Document, analysis_data: dict = None) -> tuple:
         """Find Section 2_5 table and row (Commonwealth Seniors Health Card)"""
+        # Priority 1: analysis-driven matching (most reliable)
+        if isinstance(analysis_data, dict):
+            anchors = []
+            left_box = analysis_data.get("left_box_analysis", {})
+            right_box = analysis_data.get("right_box_analysis", {})
+
+            for detail in left_box.get("deletion_details", []):
+                text = (detail.get("item_text") or "").strip()
+                if len(text) > 20:
+                    anchors.append(text)
+
+            for detail in right_box.get("deletion_details", []):
+                text = (detail.get("item_text") or "").strip()
+                if len(text) > 25:
+                    anchors.append(text)
+
+            # Add stable section phrase anchor
+            anchors.append("commonwealth seniors health card")
+
+            for table_idx, table in enumerate(doc.tables):
+                if len(table.rows) >= 3 and len(table.columns) >= 2:
+                    for row_idx, row in enumerate(table.rows):
+                        if len(row.cells) < 2:
+                            continue
+                        combined_text = (row.cells[0].text + " " + row.cells[1].text).strip().lower()
+                        score = 0
+                        for anchor in anchors:
+                            anchor_lower = anchor.lower()
+                            if anchor_lower in combined_text:
+                                score += 3
+                            else:
+                                anchor_words = [w for w in anchor_lower.split() if len(w) >= 5]
+                                word_hits = sum(1 for w in anchor_words if w in combined_text)
+                                if word_hits >= 3:
+                                    score += 1
+
+                        if score >= 3:
+                            print(f"         🔍 Found Section 2_5 via analysis anchors: Table {table_idx}, Row {row_idx} (score={score})")
+                            return table_idx, row_idx
+
+        # Priority 2: keyword matching fallback
         for table_idx, table in enumerate(doc.tables):
             if len(table.rows) >= 3 and len(table.columns) >= 2:  # Need at least 3 rows
                 # Search ALL rows (not just 6-7) to handle dynamic row deletions
@@ -2443,8 +2484,8 @@ class UnifiedSectionImplementations:
             row_deletion_rule = analysis_data.get("row_deletion_rule", {})
             
             # PRIORITY 1: Row Deletion (highest priority)
-            left_has_marks = left_box.get("has_deletion_marks", False)
-            right_has_marks = right_box.get("has_deletion_marks", False)
+            left_has_marks = left_box.get("has_deletion_marks", False) or left_box.get("has_interruptions", False)
+            right_has_marks = right_box.get("has_deletion_marks", False) or right_box.get("has_interruptions", False)
             gpt4o_row_deletion = row_deletion_rule.get("should_delete_entire_row", False)
             
             if gpt4o_row_deletion or (left_has_marks and right_has_marks):
@@ -2641,6 +2682,54 @@ class UnifiedSectionImplementations:
     
     def _find_section_3_2_table_row(self, doc: Document, analysis_result: dict) -> tuple:
         """Find Section 3_2 table and row using DIRECT content matching for age pension amounts"""
+        # Priority 1: analysis-driven matching (most reliable)
+        analysis_data = analysis_result.get("parsed_data", analysis_result) if isinstance(analysis_result, dict) else {}
+        if isinstance(analysis_data, dict):
+            anchors = []
+            left_box = analysis_data.get("left_box_analysis", {})
+            right_box = analysis_data.get("right_box_analysis", {})
+
+            for detail in left_box.get("deletion_details", []):
+                text = (detail.get("item_text") or "").strip()
+                if len(text) > 15:
+                    anchors.append(text)
+
+            for detail in right_box.get("deletion_details", []):
+                text = (detail.get("item_text") or "").strip()
+                if len(text) > 20:
+                    anchors.append(text)
+
+            # Stable domain anchors
+            anchors.extend(["age pension", "asset limits", "qualify for the age pension"])
+
+            for table_idx, table in enumerate(doc.tables):
+                if len(table.rows) >= 3 and len(table.columns) >= 2:
+                    best_row = None
+                    best_score = 0
+                    for row_idx, row in enumerate(table.rows):
+                        if len(row.cells) < 2:
+                            continue
+                        combined_text = (row.cells[0].text + " " + row.cells[1].text).strip().lower()
+                        score = 0
+                        for anchor in anchors:
+                            anchor_lower = anchor.lower()
+                            if anchor_lower in combined_text:
+                                score += 3
+                            else:
+                                anchor_words = [w for w in anchor_lower.split() if len(w) >= 5]
+                                word_hits = sum(1 for w in anchor_words if w in combined_text)
+                                if word_hits >= 3:
+                                    score += 1
+
+                        if score > best_score:
+                            best_score = score
+                            best_row = row_idx
+
+                    if best_row is not None and best_score >= 3:
+                        print(f"         ✅ FOUND Section 3_2 via analysis anchors at Table {table_idx}, Row {best_row} (score={best_score})")
+                        return table_idx, best_row
+
+        # Priority 2: legacy direct content matching fallback
         
         # HARDCODED SEARCH: Look for the specific Section 3_2 content we know exists
         # This section contains specific pension amounts and asset limits
@@ -2759,6 +2848,61 @@ class UnifiedSectionImplementations:
         except Exception as e:
             print(f"         Error deleting interrupted sentences: {e}")
             return 0
+
+    def _find_section_3_3_table_row(self, doc: Document, analysis_data: dict = None) -> tuple:
+        """Find Section 3_3 row with analysis anchors first, then keyword fallback."""
+        if isinstance(analysis_data, dict):
+            anchors = []
+            left_box = analysis_data.get("left_box_analysis", {})
+            right_box = analysis_data.get("right_box_analysis", {})
+
+            for detail in left_box.get("deletion_details", []):
+                text = (detail.get("item_text") or "").strip()
+                if len(text) > 12:
+                    anchors.append(text)
+
+            for detail in right_box.get("deletion_details", []):
+                text = (detail.get("item_text") or "").strip()
+                if len(text) > 6:
+                    anchors.append(text)
+
+            anchors.extend([
+                "maintain at least the minimum pension",
+                "under 65 4%",
+                "95 or more 14%",
+            ])
+
+            best_match = None
+            best_score = 0
+
+            for table_idx, table in enumerate(doc.tables):
+                if len(table.rows) >= 3 and len(table.columns) >= 2:
+                    for row_idx, row in enumerate(table.rows):
+                        if len(row.cells) < 2:
+                            continue
+                        combined_text = (row.cells[0].text + " " + row.cells[1].text).strip().lower()
+                        score = 0
+
+                        for anchor in anchors:
+                            anchor_lower = anchor.lower()
+                            if anchor_lower in combined_text:
+                                score += 3
+                            else:
+                                anchor_words = [w for w in anchor_lower.split() if len(w) >= 4]
+                                word_hits = sum(1 for w in anchor_words if w in combined_text)
+                                if word_hits >= 2:
+                                    score += 1
+
+                        if score > best_score:
+                            best_score = score
+                            best_match = (table_idx, row_idx)
+
+            if best_match and best_score >= 3:
+                print(f"         ✅ Found Section 3_3 via analysis anchors at Table {best_match[0]}, Row {best_match[1]} (score={best_score})")
+                return best_match
+
+        print(f"         ⚠️ Section 3_3 anchor search failed, using keyword fallback")
+        return self._simple_keyword_search(doc, ["maintain", "minimum", "pension"], min_keywords=3, fallback_row=9)
     
     def implement_section_3_3(self, doc: Document, analysis: dict) -> list:
         """Section 3_3 implementation - Minimum Pension
@@ -2774,9 +2918,8 @@ class UnifiedSectionImplementations:
             
             print(f"      🔧 Applying Section 3_3 Changes...")
             
-            # Find Section 3_3 table and row using content-based matching
-            # Section 3_3 should target "Maintain at least the minimum pension" row
-            table_idx, row_idx = self._simple_keyword_search(doc, ["maintain", "minimum", "pension"], min_keywords=3, fallback_row=9)
+            # Find Section 3_3 table and row using analysis-aware matching
+            table_idx, row_idx = self._find_section_3_3_table_row(doc, analysis_data)
             
             if table_idx is None or row_idx is None:
                 print(f"         ❌ Could not find Section 3_3 table row")
@@ -2786,7 +2929,7 @@ class UnifiedSectionImplementations:
             
             # RE-FIND row position dynamically in case other rows were deleted
             print(f"      🔄 RE-FINDING Section 3_3 position after potential row deletions...")
-            fresh_table_idx, fresh_row_idx = self._simple_keyword_search(doc, ["maintain", "minimum", "pension"], min_keywords=3, fallback_row=9)
+            fresh_table_idx, fresh_row_idx = self._find_section_3_3_table_row(doc, analysis_data)
             
             if fresh_table_idx != table_idx or fresh_row_idx != row_idx:
                 print(f"      📍 Row position CHANGED: {table_idx},{row_idx} → {fresh_table_idx},{fresh_row_idx}")
@@ -2961,10 +3104,8 @@ class UnifiedSectionImplementations:
                 print(f"      🔍 Part 1 data keys: {list(part1_data.keys()) if part1_data else 'None'}")
                 print(f"      🔍 Part 2 data keys: {list(part2_data.keys()) if part2_data else 'None'}")
                 
-                # Find Section 4_1 table and row using EXACT same keywords as working individual test
-                # Debt reduction keywords: "pay off debt", "moved funds" OR "funds transferred", "principal mortgage", etc.
-                section_4_1_keywords = ["pay", "off", "debt", "moved", "funds", "transferred", "accounts", "continue", "principal", "mortgage", "debt", "reduction", "calculator", "website"]
-                table_idx, row_idx = self._simple_keyword_search(doc, section_4_1_keywords, min_keywords=3, fallback_row=11)
+                # Find Section 4_1 table and row using analysis anchors first to avoid cross-targeting
+                table_idx, row_idx = self._find_section_4_1_table_row(doc, analysis)
                 
                 if table_idx is None or row_idx is None:
                     print(f"         ❌ Could not find Section 4_1 table row")
@@ -3078,8 +3219,7 @@ class UnifiedSectionImplementations:
                 
                 # Find Section 4_1 table and row using EXACT same keywords as working individual test
                 # Debt reduction keywords: "pay off debt", "moved funds" OR "funds transferred", "principal mortgage", etc.
-                section_4_1_keywords = ["pay", "off", "debt", "moved", "funds", "transferred", "accounts", "continue", "principal", "mortgage", "debt", "reduction", "calculator", "website"]
-                table_idx, row_idx = self._simple_keyword_search(doc, section_4_1_keywords, min_keywords=3, fallback_row=11)
+                table_idx, row_idx = self._find_section_4_1_table_row(doc, analysis)
                 
                 if table_idx is None or row_idx is None:
                     print(f"         ❌ Could not find Section 4_1 table row")
@@ -3522,26 +3662,6 @@ class UnifiedSectionImplementations:
                 })
                 print(f"      ✅ Section 4_4: No-change rule applied")
                 return changes
-            
-            # Check for row deletion 
-            row_deletion_rule = analysis_data.get("row_deletion_rule", {})
-            if row_deletion_rule.get("should_delete_entire_row", False):
-                # Find and delete table row (simplified implementation)
-                for table_idx, table in enumerate(doc.tables):
-                    if len(table.rows) >= 7 and len(table.columns) >= 2:  # Section 4_4 should be around row 6-7
-                        # Try to delete a row (simplified)
-                        try:
-                            row = table.rows[6]  # Approximate location of Section 4_4
-                            table._tbl.remove(row._tr)
-                            changes.append({
-                                "type": "row_deletion",
-                                "section": "Section_4_4",
-                                "explanation": "Both boxes have deletion marks - entire row deleted"
-                            })
-                            print(f"      ✅ Section 4_4: Row deletion applied")
-                            break
-                        except:
-                            pass
             
             # NEW: Apply comprehensive rules with priority handling
             # First, find the table and row for comprehensive rules
@@ -4231,6 +4351,51 @@ class UnifiedSectionImplementations:
     def _find_section_4_4_table_row(self, doc: Document, analysis_result: dict = None) -> tuple:
         """Find Section 4_4 table and row using EXACT same method as working individual test"""
         print(f"         🎯 Using EXACT Section 4_4 detection from working individual test")
+
+        # Priority 1: analysis-driven anchors to avoid cross-targeting Section 4_6
+        if isinstance(analysis_result, dict):
+            analysis_data = analysis_result.get("parsed_data", analysis_result)
+            if isinstance(analysis_data, dict):
+                anchors = []
+                right_box = analysis_data.get("right_box_analysis", {})
+                for dot in right_box.get("main_dot_points", []):
+                    content = (dot.get("content") or "").strip()
+                    if len(content) > 20:
+                        anchors.append(content)
+
+                anchors.extend([
+                    "ensure in event of death and disability",
+                    "adequate insurance coverage",
+                    "more4life source competitive premiums",
+                    "apply for and maintain your existing insurances",
+                ])
+
+                best_match = None
+                best_score = 0
+                for table_idx, table in enumerate(doc.tables):
+                    if len(table.rows) >= 3 and len(table.columns) >= 2:
+                        for row_idx, row in enumerate(table.rows):
+                            if len(row.cells) < 2:
+                                continue
+                            combined_text = (row.cells[0].text + " " + row.cells[1].text).strip().lower()
+                            score = 0
+                            for anchor in anchors:
+                                anchor_lower = anchor.lower()
+                                if anchor_lower in combined_text:
+                                    score += 3
+                                else:
+                                    anchor_words = [w for w in anchor_lower.split() if len(w) >= 5]
+                                    word_hits = sum(1 for w in anchor_words if w in combined_text)
+                                    if word_hits >= 3:
+                                        score += 1
+
+                            if score > best_score:
+                                best_score = score
+                                best_match = (table_idx, row_idx)
+
+                if best_match and best_score >= 3:
+                    print(f"         ✅ Found Section_4_4 via analysis anchors at Table {best_match[0]}, Row {best_match[1]} (score={best_score})")
+                    return best_match
         
         # Use EXACT same keywords from working test
         section_4_4_keywords = [
@@ -4247,6 +4412,70 @@ class UnifiedSectionImplementations:
             min_keywords=4,  # Require 4+ matches for specificity
             fallback_position=(1, 14)  # Fallback position if no matches found
         )
+
+    def _find_section_4_1_table_row(self, doc: Document, analysis_result: dict = None) -> tuple:
+        """Find Section 4_1 row with analysis anchors first, then strict keyword fallback."""
+        print(f"         🎯 Searching Section_4_1 with analysis anchors")
+
+        anchors = [
+            "pay off debt",
+            "moved funds from various accounts",
+            "continue with debt reduction",
+            "principal and interest mortgage repayments",
+            "debt reduction calculator",
+            "mortgage",
+        ]
+
+        if isinstance(analysis_result, dict):
+            if "part1_data" in analysis_result and "part2_data" in analysis_result:
+                part_candidates = [analysis_result.get("part1_data", {}), analysis_result.get("part2_data", {})]
+            else:
+                part_candidates = [analysis_result.get("parsed_data", analysis_result)]
+
+            for part in part_candidates:
+                if not isinstance(part, dict):
+                    continue
+                left_box = part.get("left_box_analysis", {})
+                right_box = part.get("right_box_analysis", {})
+
+                for detail in left_box.get("deletion_details", []):
+                    text = (detail.get("item_text") or "").strip()
+                    if len(text) > 12:
+                        anchors.append(text)
+                for detail in right_box.get("deletion_details", []):
+                    text = (detail.get("item_text") or "").strip()
+                    if len(text) > 12:
+                        anchors.append(text)
+
+        best_match = None
+        best_score = 0
+        for table_idx, table in enumerate(doc.tables):
+            if len(table.rows) >= 3 and len(table.columns) >= 2:
+                for row_idx, row in enumerate(table.rows):
+                    if len(row.cells) < 2:
+                        continue
+                    combined_text = (row.cells[0].text + " " + row.cells[1].text).strip().lower()
+                    score = 0
+                    for anchor in anchors:
+                        anchor_lower = anchor.lower()
+                        if anchor_lower in combined_text:
+                            score += 3
+                        else:
+                            anchor_words = [w for w in anchor_lower.split() if len(w) >= 5]
+                            word_hits = sum(1 for w in anchor_words if w in combined_text)
+                            if word_hits >= 3:
+                                score += 1
+
+                    if score > best_score:
+                        best_score = score
+                        best_match = (table_idx, row_idx)
+
+        if best_match and best_score >= 3:
+            print(f"         ✅ Found Section_4_1 via anchors at Table {best_match[0]}, Row {best_match[1]} (score={best_score})")
+            return best_match
+
+        strict_keywords = ["pay", "off", "debt", "mortgage", "funds", "accounts", "principal", "interest"]
+        return self._simple_keyword_search(doc, strict_keywords, min_keywords=4, fallback_row=11)
     
     def _find_section_by_keywords_cross_page_4_4(self, doc: Document, section_name: str, keywords: list, min_keywords: int = 2, fallback_position: tuple = None) -> tuple:
         """EXACT cross-page section finder from working Section 4_4 test"""
@@ -4287,13 +4516,28 @@ class UnifiedSectionImplementations:
                 print(f"         🔍 Checking fallback position {fallback_position}: Table {table_idx} has {table_rows} rows")
                 
                 if table_rows > row_idx:
-                    print(f"         ⚠️ Using fallback position {fallback_position} (same as working test)")
-                    return fallback_position
+                    # Safety check: only use fallback row if it still resembles Section 4_4 content
+                    row = doc.tables[table_idx].rows[row_idx]
+                    if len(row.cells) >= 2:
+                        combined_text = (row.cells[0].text + " " + row.cells[1].text).strip().lower()
+                        fallback_keywords = ["insurance", "death", "disability", "premiums", "insurances"]
+                        fallback_hits = sum(1 for kw in fallback_keywords if kw in combined_text)
+                        if fallback_hits >= 1:
+                            print(f"         ⚠️ Using validated fallback position {fallback_position}")
+                            return fallback_position
+                        print(f"         ⚠️ Rejected fallback position {fallback_position} (not Section 4_4-like content)")
                 else:
                     # Adjust for deleted rows - try a few rows earlier
                     adjusted_row = max(0, table_rows - 2)
-                    print(f"         🔧 Fallback row {row_idx} doesn't exist, using adjusted row {adjusted_row}")
-                    return table_idx, adjusted_row
+                    row = doc.tables[table_idx].rows[adjusted_row]
+                    if len(row.cells) >= 2:
+                        combined_text = (row.cells[0].text + " " + row.cells[1].text).strip().lower()
+                        fallback_keywords = ["insurance", "death", "disability", "premiums", "insurances"]
+                        fallback_hits = sum(1 for kw in fallback_keywords if kw in combined_text)
+                        if fallback_hits >= 1:
+                            print(f"         🔧 Using validated adjusted fallback row {adjusted_row}")
+                            return table_idx, adjusted_row
+                    print(f"         ⚠️ Rejected adjusted fallback row {adjusted_row} (not Section 4_4-like content)")
         
         print(f"         ❌ Could not find {section_name} table row")
         return None, None

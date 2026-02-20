@@ -12,8 +12,20 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
+from PIL import Image
 from .unified_section_implementations import UnifiedSectionImplementations
 from .pdf_section_splitter import PDFSectionSplitter
+
+try:
+    from ..utils.cv_mark_detection import (
+        detect_diagonal_cross,
+        detect_diagonal_cross_in_regions,
+        split_left_right_regions,
+    )
+except Exception:
+    detect_diagonal_cross = None
+    detect_diagonal_cross_in_regions = None
+    split_left_right_regions = None
 
 class MasterUnifiedProcessor:
     def __init__(self, pdf_path: str = None, word_path: str = None, output_dir: str = None):
@@ -215,6 +227,12 @@ class MasterUnifiedProcessor:
                                     parsed_analysis = analysis_data
                             elif not parsed_analysis:
                                 parsed_analysis = analysis_data
+
+                            parsed_analysis = self._apply_cv_diagonal_cross_overrides(
+                                section_name=section_name,
+                                parsed_analysis=parsed_analysis,
+                                image_path=image_file,
+                            )
                             
                             self.analysis_collection[section_name] = {
                                 "analysis": parsed_analysis,
@@ -258,6 +276,12 @@ class MasterUnifiedProcessor:
                             parsed_analysis = analysis_data
                     elif not parsed_analysis:
                         parsed_analysis = analysis_data
+
+                    parsed_analysis = self._apply_cv_diagonal_cross_overrides(
+                        section_name=section_name,
+                        parsed_analysis=parsed_analysis,
+                        image_path=image_file,
+                    )
                     
                     self.analysis_collection[section_name] = {
                         "analysis": parsed_analysis,
@@ -392,11 +416,21 @@ class MasterUnifiedProcessor:
                     with open(part1_analysis_file, 'r', encoding='utf-8') as f:
                         part1_analysis = json.load(f)
                     part1_data = part1_analysis.get("parsed_data", part1_analysis)
+                    part1_data = self._apply_cv_diagonal_cross_overrides(
+                        section_name="section_2_2_part1",
+                        parsed_analysis=part1_data,
+                        image_path=part1_image_file,
+                    )
                     
                     # Load Part 2 data
                     with open(part2_analysis_file, 'r', encoding='utf-8') as f:
                         part2_analysis = json.load(f)
                     part2_data = part2_analysis.get("parsed_data", part2_analysis)
+                    part2_data = self._apply_cv_diagonal_cross_overrides(
+                        section_name="section_2_2_part2",
+                        parsed_analysis=part2_data,
+                        image_path=part2_image_file,
+                    )
                     
                     # Combine into new two-part format
                     parsed_analysis = {
@@ -456,11 +490,21 @@ class MasterUnifiedProcessor:
                     with open(part1_analysis_file, 'r', encoding='utf-8') as f:
                         part1_analysis = json.load(f)
                     part1_data = part1_analysis.get("parsed_data", part1_analysis)
+                    part1_data = self._apply_cv_diagonal_cross_overrides(
+                        section_name="section_4_1_part1",
+                        parsed_analysis=part1_data,
+                        image_path=part1_image_file,
+                    )
                     
                     # Load Part 2 data
                     with open(part2_analysis_file, 'r', encoding='utf-8') as f:
                         part2_analysis = json.load(f)
                     part2_data = part2_analysis.get("parsed_data", part2_analysis)
+                    part2_data = self._apply_cv_diagonal_cross_overrides(
+                        section_name="section_4_1_part2",
+                        parsed_analysis=part2_data,
+                        image_path=part2_image_file,
+                    )
                     
                     # Combine into new two-part format
                     parsed_analysis = {
@@ -519,6 +563,150 @@ class MasterUnifiedProcessor:
         }
         
         return final_document, processing_summary
+
+    def _apply_cv_diagonal_cross_overrides(self, section_name: str, parsed_analysis, image_path: str):
+        """
+        Replace diagonal/cross deletion-mark decisions with OpenCV detection,
+        while keeping AI-driven handwriting interpretation for everything else.
+        """
+        if not isinstance(parsed_analysis, dict):
+            return parsed_analysis
+
+        if not image_path or not os.path.exists(image_path):
+            return parsed_analysis
+
+        if detect_diagonal_cross is None:
+            return parsed_analysis
+
+        try:
+            with Image.open(image_path) as image:
+                if image.mode != "RGB":
+                    image = image.convert("RGB")
+
+                left_box_analysis = parsed_analysis.get("left_box_analysis")
+                right_box_analysis = parsed_analysis.get("right_box_analysis")
+
+                if isinstance(left_box_analysis, dict) and isinstance(right_box_analysis, dict):
+                    regions = split_left_right_regions(image)
+                    region_detection = detect_diagonal_cross_in_regions(image, regions)
+
+                    left_has_marks = bool(region_detection.get("left", {}).get("has_diagonal_cross", False))
+                    right_has_marks = bool(region_detection.get("right", {}).get("has_diagonal_cross", False))
+
+                    self._apply_box_level_overrides(left_box_analysis, left_has_marks)
+                    self._apply_box_level_overrides(right_box_analysis, right_has_marks)
+
+                    row_rule = parsed_analysis.get("row_deletion_rule")
+                    if not isinstance(row_rule, dict):
+                        row_rule = {}
+                        parsed_analysis["row_deletion_rule"] = row_rule
+                    self._apply_row_rule_overrides(row_rule, left_has_marks, right_has_marks)
+
+                    parsed_analysis["_cv_detection"] = {
+                        "source": "opencv",
+                        "scope": "left_right_boxes",
+                        "left": region_detection.get("left", {}),
+                        "right": region_detection.get("right", {}),
+                        "section": section_name,
+                    }
+                else:
+                    overall_detection = detect_diagonal_cross(image)
+                    has_marks = bool(overall_detection.get("has_diagonal_cross", False))
+
+                    self._apply_recursive_diagonal_gating(parsed_analysis, has_marks)
+                    parsed_analysis["_cv_detection"] = {
+                        "source": "opencv",
+                        "scope": "full_section",
+                        "overall": overall_detection,
+                        "section": section_name,
+                    }
+        except Exception as e:
+            print(f"   ⚠️ CV diagonal/cross override skipped for {section_name}: {e}")
+
+        return parsed_analysis
+
+    def _apply_box_level_overrides(self, box_analysis: dict, box_has_marks: bool):
+        if not isinstance(box_analysis, dict):
+            return
+
+        existing_deletion = bool(box_analysis.get("has_deletion_marks", False))
+        existing_interruptions = bool(box_analysis.get("has_interruptions", False))
+
+        box_analysis["has_deletion_marks"] = existing_deletion or box_has_marks
+        box_analysis["has_interruptions"] = existing_interruptions or box_has_marks
+
+        self._apply_recursive_diagonal_gating(box_analysis, box_has_marks)
+
+    def _apply_row_rule_overrides(self, row_rule: dict, left_has_marks: bool, right_has_marks: bool):
+        if not isinstance(row_rule, dict):
+            return
+
+        both = left_has_marks and right_has_marks
+
+        def _merge_bool(existing_value, detected_value: bool) -> bool:
+            return bool(existing_value) or bool(detected_value)
+
+        if "left_box_completely_marked" in row_rule:
+            row_rule["left_box_completely_marked"] = _merge_bool(row_rule.get("left_box_completely_marked"), left_has_marks)
+        if "right_box_completely_marked" in row_rule:
+            row_rule["right_box_completely_marked"] = _merge_bool(row_rule.get("right_box_completely_marked"), right_has_marks)
+        if "left_box_all_deletion_marks" in row_rule:
+            row_rule["left_box_all_deletion_marks"] = _merge_bool(row_rule.get("left_box_all_deletion_marks"), left_has_marks)
+        if "right_box_all_deletion_marks" in row_rule:
+            row_rule["right_box_all_deletion_marks"] = _merge_bool(row_rule.get("right_box_all_deletion_marks"), right_has_marks)
+        if "left_box_has_diagonal_marks" in row_rule:
+            row_rule["left_box_has_diagonal_marks"] = _merge_bool(row_rule.get("left_box_has_diagonal_marks"), left_has_marks)
+        if "right_box_has_diagonal_marks" in row_rule:
+            row_rule["right_box_has_diagonal_marks"] = _merge_bool(row_rule.get("right_box_has_diagonal_marks"), right_has_marks)
+        if "both_boxes_have_marks" in row_rule:
+            row_rule["both_boxes_have_marks"] = _merge_bool(row_rule.get("both_boxes_have_marks"), both)
+        if "delete_entire_row" in row_rule:
+            row_rule["delete_entire_row"] = _merge_bool(row_rule.get("delete_entire_row"), both)
+        if "should_delete_entire_row" in row_rule:
+            row_rule["should_delete_entire_row"] = _merge_bool(row_rule.get("should_delete_entire_row"), both)
+
+    def _apply_recursive_diagonal_gating(self, data, has_diagonal_cross: bool):
+        if isinstance(data, dict):
+            for _, value in data.items():
+                self._apply_recursive_diagonal_gating(value, has_diagonal_cross)
+
+            if "has_diagonal_cross" in data:
+                data["has_diagonal_cross"] = has_diagonal_cross
+
+            if self._is_diagonal_cross_context(data):
+                for key, value in list(data.items()):
+                    if key.startswith("should_delete") and isinstance(value, bool):
+                        data[key] = value and has_diagonal_cross
+
+        elif isinstance(data, list):
+            for item in data:
+                self._apply_recursive_diagonal_gating(item, has_diagonal_cross)
+
+    def _is_diagonal_cross_context(self, item: dict) -> bool:
+        if not isinstance(item, dict):
+            return False
+
+        if "has_diagonal_cross" in item:
+            return True
+
+        diagonal_terms = ("diagonal", "cross", "x_mark", "x mark", "crossed", "cross-out")
+        candidate_fields = (
+            "interruption_type",
+            "mark_type",
+            "deletion_type",
+            "interruption_description",
+            "mark_description",
+            "deletion_reason",
+        )
+
+        for field in candidate_fields:
+            value = item.get(field, "")
+            if isinstance(value, str):
+                lower_value = value.lower()
+                if any(term in lower_value for term in diagonal_terms):
+                    return True
+
+        return False
     
     def run_complete_process(self):
         """Run the complete unified processing workflow"""

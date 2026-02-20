@@ -114,15 +114,10 @@ class A3SectionedProcessor:
     def _regenerate_template(self):
         """Regenerate the PDF template using current field configuration."""
         try:
-            from create_custom_template import create_custom_template
-            
+            output_path = Path("processed_documents/A3_Custom_Template.pdf")
             print("🛠️ Regenerating PDF template with updated field positions...")
-            success = create_custom_template()
-            
-            if success:
-                print("✅ PDF template successfully updated!")
-            else:
-                print("⚠️ Failed to regenerate PDF template - proceeding with existing template")
+            self.template_processor.create_template_with_form_fields(output_path=output_path)
+            print("✅ PDF template successfully updated!")
                 
         except Exception as e:
             print(f"⚠️ Error regenerating template: {e}")
